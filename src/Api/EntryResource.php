@@ -92,7 +92,13 @@ class EntryResource extends AbstractDatabaseResource
     {
         /** @var Entry $model */
         $build = $model->build;
-        $context->getActor()->assertCan('update', $build);
+        $actor = $context->getActor();
+        $actor->assertCan('update', $build);
+
+        // Each new entry notifies the build's followers: 10 a minute and 60 a day.
+        if (! $actor->isAdmin() && ! RateLimit::spend("garage.entries.$actor->id", 10, 60)) {
+            throw new ValidationException(['title' => $this->translator->trans('ernestdefoe-garage.api.too_many_updates')]);
+        }
 
         if (Entry::query()->where('build_id', $build->id)->count() >= Entry::MAX_PER_BUILD) {
             throw new ValidationException(['title' => $this->translator->trans('ernestdefoe-garage.api.too_many_entries', ['count' => Entry::MAX_PER_BUILD])]);
@@ -117,7 +123,7 @@ class EntryResource extends AbstractDatabaseResource
             $build = $this->bumpBuild($model, $fresh);
 
             if ($fresh && $build->published_at) {
-                resolve(Queue::class)->push(new NotifyFollowers($model->id));
+                $this->queue()->push(new NotifyFollowers($model->id));
             }
         }
 
@@ -127,7 +133,8 @@ class EntryResource extends AbstractDatabaseResource
     public function deleting(object $model, OriginalContext $context): void
     {
         /** @var Entry $model */
-        foreach ($model->photos ?? [] as $photo) {
+        $photos = $model->photos ?? [];
+        foreach ($photos as $photo) {
             $this->photos->delete($photo);
         }
     }
@@ -140,6 +147,12 @@ class EntryResource extends AbstractDatabaseResource
             $build->refreshLog();
             $build->save();
         }
+    }
+
+    /** Resolved when used, not injected: the constructor runs on every API request. */
+    private function queue(): Queue
+    {
+        return resolve(Queue::class);
     }
 
     /** The build's log counts and latest entry, and (for news) its place in "Recently updated". */

@@ -230,6 +230,7 @@ ernestdefoe-garage:
     too_many_comments: You're commenting too fast. Wait a minute and try again.
     too_many_entries: "A build log can have up to {count} updates."
     too_many_photos: "Up to {count} photos are allowed here."
+    too_many_updates: You've posted a lot of updates today. Try again tomorrow.
     too_many_uploads: You've uploaded a lot of photos in a short time. Wait a few minutes and try again.
 
   email:

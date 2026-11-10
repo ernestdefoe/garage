@@ -28,7 +28,7 @@ class GaragePageContent
 
     public function __invoke(Document $document, ServerRequestInterface $request): Document
     {
-        $id = (int) Arr::get($request->getQueryParams(), 'id', Arr::get($request->getAttribute('routeParameters', []), 'id', 0));
+        $id = (int) Arr::get($request->getAttribute('routeParameters', []), 'id', 0);
 
         $build = $id > 0 ? Build::query()->whereVisibleTo(RequestUtil::getActor($request))->whereNotNull('published_at')->find($id) : null;
 
