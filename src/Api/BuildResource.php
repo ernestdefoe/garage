@@ -83,11 +83,23 @@ class BuildResource extends AbstractDatabaseResource
             Endpoint\Index::make()
                 ->paginate(24, 48)
                 ->defaultInclude(['user', 'category', 'lastEntry'])
+                // The category is always loaded with the list: specs are cleaned against it as they are read.
+                ->eagerLoad(['category'])
                 // The owners' groups (staff see them) in one query, not one per owner.
                 ->eagerLoadWhenIncluded(['user' => ['user.groups']])
-                ->defaultSort('-lastActivityAt'),
+                ->defaultSort('-lastActivityAt')
+                // The latest entry's canEdit asks its build's policy: hand it the build it belongs to
+                // instead of letting each entry load it again.
+                ->beforeSerialization(function (Context $context, array $results) {
+                    foreach ($results['models'] as $build) {
+                        if ($build->relationLoaded('lastEntry') && $build->lastEntry) {
+                            $build->lastEntry->setRelation('build', $build);
+                        }
+                    }
+                }),
             Endpoint\Show::make()
                 ->defaultInclude(['user', 'category'])
+                ->eagerLoad(['category'])
                 ->eagerLoadWhenIncluded(['user' => ['user.groups']]),
             Endpoint\Create::make()
                 ->authenticated()
@@ -193,7 +205,9 @@ class BuildResource extends AbstractDatabaseResource
                 ->in(Build::STAGES),
             // {fieldKey: value}; kept to the category's fields in saving().
             Schema\Arr::make('specs')
-                ->get(fn (Build $b) => (object) ($b->specs ?? []))
+                // Cleaned again as it is read: a field's type may have changed, or the build moved
+                // to another category, since its values were saved (a text value is no link).
+                ->get(fn (Build $b) => (object) ($b->category ? $b->category->cleanSpecs($b->specs) : ($b->specs ?? [])))
                 ->writable($owner)
                 ->set(fn (Build $b, $value) => $b->specs = is_array($value) ? $value : []),
             Schema\Arr::make('photos')

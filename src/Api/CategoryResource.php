@@ -97,8 +97,13 @@ class CategoryResource extends AbstractDatabaseResource
             throw new ValidationException(['category' => $this->translator->trans('ernestdefoe-garage.api.last_category')]);
         }
 
-        // Spec values for fields the new category lacks are dropped on the build's next save.
-        Build::query()->where('category_id', $model->id)->update(['category_id' => $to->id]);
+        // Each build keeps only the values the new category's spec sheet takes (a link stays a link).
+        Build::query()->where('category_id', $model->id)->each(function (Build $build) use ($to) {
+            $build->category_id = $to->id;
+            $build->specs = $to->cleanSpecs($build->specs) ?: null;
+            $build->timestamps = false;
+            $build->save();
+        });
         resolve(Counts::class)->categories([$to->id]);
     }
 
