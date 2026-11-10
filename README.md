@@ -15,6 +15,7 @@ Members show off their builds, whatever your forum is about: cars, PC builds, ke
 - **In posts.** Paste a build's link on a line of its own and the post shows the build's card. "Start a discussion about it" opens the composer with the link already in.
 - **Under signatures.** With [FoF Signature](https://github.com/FriendsOfFlarum/signature), members can show one build under their posts.
 - **Photos.** Stored by Garage (re-encoded as WebP, location data stripped) or through [FoF Upload](https://github.com/FriendsOfFlarum/upload) when it's installed. Big phone photos are shrunk in the browser before they're sent.
+- **GDPR**: with Flarum's GDPR extension, a member's builds, photos and comments are part of their data export and are removed on erasure.
 - **Permissions** to view, add builds, like, comment and moderate. Guests can look by default.
 - **Light on your forum.** The pages, windows and styles load only when a Garage page opens. Lists take the same handful of queries however many builds they show; build cards in posts and signatures cost two queries per page at most, and none on pages without them.
 
