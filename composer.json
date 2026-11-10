@@ -1,0 +1,86 @@
+{
+    "name": "ernestdefoe/garage",
+    "description": "Garage: members show off their builds (cars, PCs, keyboards, guitars, gardens, anything) with a photo gallery, a spec sheet the admin designs per category, a story and a dated build log that followers are told about.",
+    "keywords": [
+        "flarum",
+        "flarum-extension",
+        "garage",
+        "builds",
+        "showcase",
+        "build log",
+        "project log",
+        "gallery"
+    ],
+    "type": "flarum-extension",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ernest Defoe",
+            "email": "ernestdefoe@gmail.com"
+        }
+    ],
+    "homepage": "https://github.com/ernestdefoe/garage",
+    "support": {
+        "issues": "https://github.com/ernestdefoe/garage/issues",
+        "source": "https://github.com/ernestdefoe/garage"
+    },
+    "funding": [
+        {
+            "type": "other",
+            "url": "https://buymeacoffee.com/ernestdefoe"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "flarum/core": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ErnestDefoe\\Garage\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ErnestDefoe\\Garage\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "flarum-extension": {
+            "title": "Garage",
+            "category": "feature",
+            "icon": {
+                "name": "fas fa-warehouse",
+                "backgroundColor": "#c2410c",
+                "color": "#fff"
+            },
+            "optional-dependencies": [
+                "flarum/gdpr",
+                "fof/upload",
+                "fof/signature"
+            ]
+        }
+    },
+    "require-dev": {
+        "flarum/phpstan": "^2.0",
+        "flarum/testing": "^2.0"
+    },
+    "scripts": {
+        "test": [
+            "@test:integration"
+        ],
+        "test:integration": "phpunit -c tests/phpunit.integration.xml",
+        "test:setup": "@php tests/integration/setup.php",
+        "analyse:phpstan": "phpstan analyse"
+    },
+    "scripts-descriptions": {
+        "test": "Runs all tests.",
+        "test:integration": "Runs all integration tests.",
+        "test:setup": "Sets up a database for use with integration tests. Execute this only once.",
+        "analyse:phpstan": "Run static analysis"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "beta",
+    "prefer-stable": true
+}

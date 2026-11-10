@@ -1,0 +1,133 @@
+.GarageCategories-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+.GarageCategories-item {
+  border: 1px solid var(--control-bg);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  background: var(--body-bg);
+
+  &.is-open {
+    border-color: var(--primary-color);
+  }
+}
+.GarageCategories-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  flex-wrap: wrap;
+}
+.GarageCategories-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.GarageCategories-name {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-color);
+
+  .helpText {
+    margin: 0;
+  }
+}
+.GarageCategories-tools {
+  display: flex;
+  gap: 6px;
+}
+.GarageCategories-form {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--control-bg);
+
+  > label {
+    display: block;
+    margin: 10px 0;
+  }
+  h4 {
+    margin: 18px 0 4px;
+  }
+}
+.GarageCategories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(~"min(200px, 100%)", 1fr));
+  gap: 10px 14px;
+  margin-top: 10px;
+
+  label {
+    margin: 0;
+  }
+}
+.GarageCategories-color {
+  display: flex;
+  gap: 6px;
+
+  input[type='color'] {
+    width: 42px;
+    height: 36px;
+    padding: 2px;
+    border: 1px solid var(--control-bg);
+    border-radius: 6px;
+    background: none;
+  }
+}
+.GarageFields {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 12px;
+}
+.GarageFields-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--control-bg);
+}
+.GarageFields-main {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  > .FormControl {
+    flex: 1 1 180px;
+    min-width: 0;
+  }
+}
+.GarageFields-extra {
+  display: block;
+  margin: 8px 0 0;
+
+  textarea {
+    width: 100%;
+  }
+}
+.GarageFields-unit .FormControl {
+  max-width: 160px;
+}
+.GarageFields-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 6px;
+
+  .checkbox {
+    margin: 0;
+  }
+}
+.GarageCategories-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.GarageCategories-delete {
+  margin-left: auto;
+}

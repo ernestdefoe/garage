@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "name": "@ernestdefoe/garage",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "node tools/css.mjs && webpack --mode development --watch",
+    "build": "node tools/css.mjs && webpack --mode production",
+    "format": "prettier --write src",
+    "format-check": "prettier --check src"
+  },
+  "devDependencies": {
+    "@flarum/prettier-config": "^1.0.0",
+    "flarum-webpack-config": "^3.1.0",
+    "less": "^4.9.1",
+    "prettier": "^3.9.10",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^7.2.3"
+  },
+  "prettier": "@flarum/prettier-config"
+}

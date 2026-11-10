@@ -1,0 +1,112 @@
+// Only what shows outside Garage's own pages: a build's card in a post and
+// under a signature. Everything else loads with the pages (pages.less).
+
+.GarageEmbed-holder {
+  display: block;
+}
+.Post-body .GarageEmbed,
+.GarageSignature .GarageEmbed {
+  display: flex;
+  align-items: stretch;
+  max-width: 560px;
+  margin: 4px 0;
+  border: 1px solid var(--control-bg);
+  border-left: 4px solid var(--garage-accent, var(--primary-color));
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--body-bg);
+  color: var(--text-color);
+  text-decoration: none;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    text-decoration: none;
+    box-shadow: 0 6px 18px var(--shadow-color, rgba(0, 0, 0, 0.1));
+  }
+}
+.GarageEmbed-cover {
+  flex: 0 0 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--control-bg);
+  color: var(--garage-accent, var(--primary-color));
+  font-size: 30px;
+  min-height: 104px;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    max-width: none;
+  }
+}
+.GarageEmbed-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 14px;
+  min-width: 0;
+  line-height: 1.35;
+}
+.Post-body .GarageEmbed-kicker,
+.GarageSignature .GarageEmbed-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--garage-accent, var(--primary-color));
+}
+.Post-body .GarageEmbed-title,
+.GarageSignature .GarageEmbed-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--heading-color, var(--text-color));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.Post-body .GarageEmbed-tagline {
+  font-size: 13px;
+  color: var(--muted-color);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.Post-body .GarageEmbed-meta,
+.GarageSignature .GarageEmbed-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted-color);
+}
+
+.GarageSignature {
+  margin-top: 12px;
+
+  .GarageEmbed--compact {
+    max-width: 380px;
+  }
+  .GarageEmbed--compact .GarageEmbed-cover {
+    flex-basis: 84px;
+    min-height: 64px;
+    font-size: 22px;
+  }
+  .GarageEmbed--compact .GarageEmbed-body {
+    padding: 8px 12px;
+  }
+  .GarageEmbed--compact .GarageEmbed-title {
+    font-size: 14px;
+  }
+}
+
+@media @phone {
+  .GarageEmbed-cover {
+    flex-basis: 96px;
+  }
+}
