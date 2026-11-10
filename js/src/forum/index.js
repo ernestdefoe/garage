@@ -7,6 +7,7 @@ import CommentPost from 'flarum/forum/components/CommentPost';
 import { registerModels } from '../common/models';
 import EmbedCard from './components/EmbedCard';
 import { t } from './util';
+import { loadStyles } from './styles';
 
 /*
  * forum.js is loaded on every page, so it only wires things up: the routes,
@@ -18,9 +19,11 @@ import { t } from './util';
 app.initializers.add('ernestdefoe-garage', () => {
   registerModels(app);
 
-  app.routes['garage'] = { path: '/garage', component: () => import('./components/GaragePage') };
-  app.routes['garage.build'] = { path: '/garage/:id', component: () => import('./components/BuildPage') };
-  app.routes['user.garage'] = { path: '/u/:username/garage', component: () => import('./components/UserGaragePage') };
+  // Each page and the shared styles load side by side.
+  const page = (load) => () => Promise.all([load(), loadStyles()]).then(([module]) => module);
+  app.routes['garage'] = { path: '/garage', component: page(() => import('./components/GaragePage')) };
+  app.routes['garage.build'] = { path: '/garage/:id', component: page(() => import('./components/BuildPage')) };
+  app.routes['user.garage'] = { path: '/u/:username/garage', component: page(() => import('./components/UserGaragePage')) };
 
   extend(IndexSidebar.prototype, 'navItems', function (items) {
     if (!app.forum.attribute('garageCanView') || !app.forum.attribute('garageNav')) return;

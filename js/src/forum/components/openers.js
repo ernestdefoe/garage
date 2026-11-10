@@ -2,14 +2,15 @@ import app from 'flarum/forum/app';
 import Stream from 'flarum/common/utils/Stream';
 import extractText from 'flarum/common/utils/extractText';
 import { t, buildUrl } from '../util';
+import { loadStyles } from '../styles';
 
 /** The forms are a chunk of their own, fetched the first time one opens. */
 export function openBuildEditor(attrs) {
-  app.modal.show(() => import('./BuildEditModal'), attrs);
+  app.modal.show(() => Promise.all([import('./BuildEditModal'), loadStyles()]).then(([module]) => module), attrs);
 }
 
 export function openEntryEditor(attrs) {
-  app.modal.show(() => import('./EntryModal'), attrs);
+  app.modal.show(() => Promise.all([import('./EntryModal'), loadStyles()]).then(([module]) => module), attrs);
 }
 
 /** A new discussion with the build's link on a line of its own, so the post shows its card. */
