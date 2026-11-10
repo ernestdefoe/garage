@@ -9,7 +9,7 @@ use Flarum\Search\ValidateFilterTrait;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * `filter[text]=turbo`: builds whose title or tagline holds the words. Each
+ * `filter[text]=turbo`: builds whose title or tagline holds the words, in any case. Each
  * word must match; LIKE wildcards in what was typed are matched literally.
  *
  * @implements FilterInterface<DatabaseSearchState>
@@ -31,7 +31,8 @@ class TextFilter implements FilterInterface
         foreach ($words as $word) {
             $like = '%'.addcslashes($word, '%_\\').'%';
             $state->getQuery()->where(function (Builder $q) use ($like) {
-                $q->where('garage_builds.title', 'like', $like)->orWhere('garage_builds.tagline', 'like', $like);
+                // whereLike, not 'like': case-insensitive on every database (PostgreSQL's LIKE is not).
+                $q->whereLike('garage_builds.title', $like)->orWhereLike('garage_builds.tagline', $like);
             }, null, null, $negate ? 'and not' : 'and');
         }
     }
