@@ -21,7 +21,7 @@ use WeakMap;
  */
 class Cards
 {
-    /** @var WeakMap<ServerRequestInterface, array{queued: array<int, true>, rows: array<int, array<string, mixed>|null>, owners: array<int, User>, categories?: \Illuminate\Support\Collection<int, Category>}> */
+    /** @var WeakMap<ServerRequestInterface, array{queued: array<int, true>, rows: array<int, array<string, mixed>|null>, owners: array<int, User>, categories?: \Illuminate\Support\Collection<array-key, Category>}> */
     // Static: post fields, user fields and resources each get their own instance, and must share one batch.
     private static WeakMap $byRequest;
 

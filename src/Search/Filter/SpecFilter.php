@@ -27,6 +27,8 @@ class SpecFilter implements FilterInterface
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
         /** @var DatabaseSearchState $state */
+        $query = $state->getQuery();
+
         // One pair: a select option may hold a comma, which a list would split.
         foreach ([is_array($value) ? (string) reset($value) : $value] as $pair) {
             [$key, $wanted] = array_pad(explode(':', $pair, 2), 2, '');
@@ -34,7 +36,7 @@ class SpecFilter implements FilterInterface
                 continue;
             }
 
-            $state->getQuery()->where("garage_builds.specs->$key", $negate ? '!=' : '=', $wanted);
+            $query->where("garage_builds.specs->$key", $negate ? '!=' : '=', $wanted);
         }
     }
 }
