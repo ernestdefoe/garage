@@ -158,7 +158,7 @@ export default class PhotoManager {
 
   remove(endpoint, model, index) {
     if (!confirm(extractText(t('edit.remove_photo_confirm')))) return;
-    app.request({ method: 'DELETE', url: `${endpoint}/photos/${index}` }).then((payload) => {
+    app.request({ method: 'POST', url: `${endpoint}/photos/remove`, body: { url: model.photos()[index].url } }).then((payload) => {
       app.store.pushPayload(payload);
       m.redraw();
     });

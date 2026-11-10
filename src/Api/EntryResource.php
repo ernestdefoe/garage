@@ -4,6 +4,7 @@ namespace ErnestDefoe\Garage\Api;
 
 use Carbon\Carbon;
 use ErnestDefoe\Garage\Build;
+use ErnestDefoe\Garage\Comment;
 use ErnestDefoe\Garage\Entry;
 use ErnestDefoe\Garage\Job\NotifyFollowers;
 use ErnestDefoe\Garage\Storage\Photos;
@@ -142,9 +143,13 @@ class EntryResource extends AbstractDatabaseResource
     public function deleted(object $model, OriginalContext $context): void
     {
         /** @var Entry $model */
+        // Its comments go too (where the database doesn't cascade), and the build's comment count with them.
+        Comment::query()->where('entry_id', $model->id)->delete();
+
         $build = Build::query()->find($model->build_id);
         if ($build) {
             $build->refreshLog();
+            $build->comment_count = Comment::query()->where('build_id', $build->id)->count();
             $build->save();
         }
     }

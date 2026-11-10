@@ -31,11 +31,13 @@ trait ManagesPhotos
                 ->authenticated()
                 ->can('update')
                 ->action(fn (Context $context) => $this->addPhoto($context)),
+            // {"url": "…"}: the photo's url as the API sent it. By url, not position, so a list
+            // reordered in another tab can never take the wrong photo.
             Endpoint\Endpoint::make("$name.photos.remove")
-                ->route('DELETE', '/{id}/photos/{index}')
+                ->route('POST', '/{id}/photos/remove')
                 ->authenticated()
                 ->can('update')
-                ->action(fn (Context $context) => $this->removePhoto($context->model, (int) ($context->request->getAttribute('routeParameters')['index'] ?? -1))),
+                ->action(fn (Context $context) => $this->removePhoto($context->model, (string) ($context->body()['url'] ?? ''))),
             // {"order": [2, 0, 1]}: the photos' current indexes in their new order.
             Endpoint\Endpoint::make("$name.photos.order")
                 ->route('POST', '/{id}/photos/order')
@@ -76,15 +78,19 @@ trait ManagesPhotos
         return $model;
     }
 
-    private function removePhoto(Build|Entry $model, int $index): Build|Entry
+    private function removePhoto(Build|Entry $model, string $url): Build|Entry
     {
+        $storage = resolve(Photos::class);
         $photos = $model->photos ?? [];
 
-        if (isset($photos[$index])) {
-            resolve(Photos::class)->delete($photos[$index]);
-            array_splice($photos, $index, 1);
-            $model->photos = $photos ?: null;
-            $model->save();
+        foreach ($photos as $index => $photo) {
+            if ($url !== '' && ($storage->present($photo)['url'] ?? null) === $url) {
+                $storage->delete($photo);
+                array_splice($photos, $index, 1);
+                $model->photos = $photos ?: null;
+                $model->save();
+                break;
+            }
         }
 
         return $model;

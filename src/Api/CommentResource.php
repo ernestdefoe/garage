@@ -15,6 +15,7 @@ use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
+use Flarum\Notification\Notification;
 use Flarum\Notification\NotificationSyncer;
 use Illuminate\Database\Eloquent\Builder;
 use Tobyz\JsonApiServer\Context as OriginalContext;
@@ -117,6 +118,11 @@ class CommentResource extends AbstractDatabaseResource
     {
         /** @var Comment $model */
         $this->recount($model);
+
+        // The owner's "commented on your build" for this comment goes with it.
+        Notification::query()->where('type', CommentBlueprint::getType())->where('subject_id', $model->build_id)->get(['id', 'data'])
+            ->filter(fn (Notification $n) => (int) (((array) $n->data)['comment'] ?? 0) === $model->id)
+            ->each(fn (Notification $n) => $n->delete());
     }
 
     private function recount(Comment $comment): void

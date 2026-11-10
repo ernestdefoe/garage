@@ -330,7 +330,7 @@ export default class BuildPage extends Page {
           {rows.map((field) => [
             <dt>{field.label}</dt>,
             <dd>
-              {field.type === 'link' ? (
+              {field.type === 'link' && /^https?:\/\//i.test(String(specs[field.key])) ? (
                 <a href={specs[field.key]} target="_blank" rel="ugc noopener nofollow">
                   {String(specs[field.key])
                     .replace(/^https?:\/\/(www\.)?/, '')
