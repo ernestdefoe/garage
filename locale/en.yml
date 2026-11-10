@@ -223,6 +223,11 @@ ernestdefoe-garage:
         select: Choice
         text: Text
 
+  lib:
+    gdpr:
+      export: "Garage: the member's builds with their photos, spec sheets, stories and build logs, and their comments."
+      delete: "Garage: the member's builds (photos and build logs included), comments, likes and follows are deleted."
+
   api:
     last_category: The last category can't be deleted while it has builds.
     photo_not_found: That photo couldn't be found. Upload it again.

@@ -83,15 +83,14 @@ class Photos
      */
     public function store(string $source, string $folder): array
     {
-        $image = resolve(ImageManager::class)->read($source);
+        // Scaled to full size first, so the small copy is made from that, not from the original.
+        $image = resolve(ImageManager::class)->read($source)->scaleDown(width: self::FULL, height: self::MAX_HEIGHT);
         $name = $folder.'/'.Str::random(24).'.webp';
+        $size = [$image->width(), $image->height()];
         $written = [];
-        $size = [0, 0];
 
         try {
-            foreach ([$name => self::FULL, self::small($name) => self::SMALL] as $target => $width) {
-                $copy = clone $image;
-                $copy->scaleDown(width: $width, height: self::MAX_HEIGHT);
+            foreach ([$name => $image, self::small($name) => (clone $image)->scaleDown(width: self::SMALL, height: self::MAX_HEIGHT)] as $target => $copy) {
                 $encoded = (string) $copy->toWebp(quality: 82);
 
                 if ($encoded === '') {
@@ -100,7 +99,6 @@ class Photos
 
                 $this->disk()->put($target, $encoded);
                 $written[] = $target;
-                $size = $size[0] ? $size : [$copy->width(), $copy->height()];
             }
         } catch (Throwable $e) {
             $this->disk()->delete($written);
@@ -130,6 +128,12 @@ class Photos
             'w' => $file->image_width ?: null,
             'h' => $file->image_height ?: null,
         ]);
+    }
+
+    /** A photo's full-size bytes, when Garage stores it (a data export); null for FoF Upload's. */
+    public function contents(mixed $photo): ?string
+    {
+        return is_array($photo) && ! empty($photo['path']) && $this->disk()->exists($photo['path']) ? $this->disk()->get($photo['path']) : null;
     }
 
     /** Delete a photo's files, when they are Garage's own. */

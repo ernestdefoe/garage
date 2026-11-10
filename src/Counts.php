@@ -3,6 +3,7 @@
 namespace ErnestDefoe\Garage;
 
 use ErnestDefoe\Garage\Storage\Photos;
+use Flarum\Notification\Notification;
 use Flarum\User\User;
 
 /**
@@ -57,6 +58,7 @@ class Counts
             Entry::query()->where('build_id', $build->id)->delete();
             $build->getConnection()->table('garage_likes')->where('build_id', $build->id)->delete();
             $build->getConnection()->table('garage_follows')->where('build_id', $build->id)->delete();
+            Notification::query()->whereIn('type', ['garageNewEntry', 'garageComment'])->where('subject_id', $build->id)->delete();
         });
     }
 }

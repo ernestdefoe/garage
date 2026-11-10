@@ -16,6 +16,7 @@
 use ErnestDefoe\Garage\Access;
 use ErnestDefoe\Garage\Api;
 use ErnestDefoe\Garage\Build;
+use ErnestDefoe\Garage\Gdpr\GarageData;
 use ErnestDefoe\Garage\Comment;
 use ErnestDefoe\Garage\Entry;
 use ErnestDefoe\Garage\Http\GaragePageContent;
@@ -32,9 +33,10 @@ use Flarum\Api\Resource\UserResource;
 use Flarum\Api\Schema;
 use Flarum\Extend;
 use Flarum\Foundation\Paths;
+use Flarum\Gdpr\Extend\UserData;
 use Flarum\Http\UrlGenerator;
 use Flarum\Search\Database\DatabaseSearchDriver;
-use Flarum\User\Event\Deleted;
+use Flarum\User\Event\Deleting;
 use Flarum\User\User;
 
 return [
@@ -133,5 +135,10 @@ return [
         ->type(CommentBlueprint::class, ['alert']),
 
     (new Extend\Event())
-        ->listen(Deleted::class, ForgetDeletedUser::class),
+        ->listen(Deleting::class, ForgetDeletedUser::class),
+
+    (new Extend\Conditional())
+        ->whenExtensionEnabled('flarum-gdpr', fn () => [
+            (new UserData())->addType(GarageData::class),
+        ]),
 ];
