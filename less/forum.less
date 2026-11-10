@@ -4,8 +4,11 @@
 .GarageEmbed-holder {
   display: block;
 }
-.Post-body .GarageEmbed,
-.GarageSignature .GarageEmbed {
+// An id's weight (no element has this id), to beat themes that colour every link.
+@garage-hi: ~"html:not(#garage-hi)";
+
+@{garage-hi} .Post-body a.GarageEmbed,
+@{garage-hi} .GarageSignature a.GarageEmbed {
   display: flex;
   align-items: stretch;
   max-width: 560px;
