@@ -11,7 +11,6 @@ import Placeholder from 'flarum/common/components/Placeholder';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import ItemList from 'flarum/common/utils/ItemList';
 import listItems from 'flarum/common/helpers/listItems';
-import humanTime from 'flarum/common/helpers/humanTime';
 import extractText from 'flarum/common/utils/extractText';
 import BuildLog from './BuildLog';
 import Comments from './Comments';
@@ -360,7 +359,7 @@ export default class BuildPage extends Page {
 
     return (
       <dl className="GarageStats">
-        {stat('far fa-calendar', t('build.stats.started'), humanTime(build.publishedAt() || build.createdAt()))}
+        {stat('far fa-calendar', t('build.stats.started'), dayjs(build.publishedAt() || build.createdAt()).format('ll'))}
         {stat('fas fa-list-check', t('build.stats.updates'), build.entryCount())}
         {build.spent() ? stat('fas fa-coins', t('build.stats.spent'), money(build.spent())) : null}
         {stat('fas fa-bell', t('build.stats.followers'), build.followerCount())}

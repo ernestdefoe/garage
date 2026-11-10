@@ -1078,7 +1078,7 @@
   }
 }
 .GarageLightbox-close {
-  top: max(14px, env(safe-area-inset-top));
+  top: ~"max(14px, env(safe-area-inset-top))";
   right: 14px;
 }
 .GarageLightbox-prev {
@@ -1093,7 +1093,7 @@
 }
 .GarageLightbox-caption {
   position: absolute;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  bottom: ~"max(16px, env(safe-area-inset-bottom))";
   left: 0;
   right: 0;
   display: flex;
@@ -1354,7 +1354,7 @@
   .GarageLightbox-prev,
   .GarageLightbox-next {
     top: auto;
-    bottom: max(10px, env(safe-area-inset-bottom));
+    bottom: ~"max(10px, env(safe-area-inset-bottom))";
     transform: none;
   }
 }
