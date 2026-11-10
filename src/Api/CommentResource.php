@@ -54,7 +54,8 @@ class CommentResource extends AbstractDatabaseResource
                 ->paginate(50, 200)
                 ->defaultInclude(['user'])
                 ->defaultSort('createdAt')
-                ->eagerLoad(['build']),
+                ->eagerLoad(['build'])
+                ->eagerLoadWhenIncluded(['user' => ['user.groups']]),
             Endpoint\Create::make()
                 ->authenticated()
                 ->defaultInclude(['user']),

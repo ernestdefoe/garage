@@ -5,6 +5,7 @@ namespace ErnestDefoe\Garage\Api;
 use ErnestDefoe\Garage\Settings;
 use Flarum\Api\Context;
 use Flarum\Api\Schema\Attribute;
+use Flarum\Extension\ExtensionManager;
 use Flarum\Http\UrlGenerator;
 use Flarum\Post\CommentPost;
 use Flarum\Post\Post;
@@ -19,7 +20,7 @@ class PostFields
 {
     private ?string $pattern = null;
 
-    public function __construct(private readonly Cards $cards, private readonly UrlGenerator $url)
+    public function __construct(private readonly Cards $cards, private readonly UrlGenerator $url, private readonly ExtensionManager $extensions)
     {
     }
 
@@ -30,6 +31,12 @@ class PostFields
             Attribute::make('garageEmbeds')
                 ->visible(fn (Post $post, Context $context) => $post instanceof CommentPost && $context->getActor()->hasPermission(Settings::VIEW))
                 ->get(function (Post $post, Context $context) {
+                    // The author's signature build, wanted when the author is serialized: one query for both.
+                    $signature = (int) ($post->relationLoaded('user') ? $post->user?->garage_signature_build_id : 0);
+                    if ($signature && $this->extensions->isEnabled('fof-signature')) {
+                        $this->cards->queue($context, [$signature]);
+                    }
+
                     $ids = $this->ids((string) ($post->getAttributes()['content'] ?? ''));
 
                     return $ids ? $this->cards->deferred($context, $ids, fn (array $cards) => $cards ?: null) : null;

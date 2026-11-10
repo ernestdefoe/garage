@@ -17,11 +17,12 @@ use WeakMap;
 class ViewerState
 {
     /** @var WeakMap<ServerRequestInterface, array<string, array{queued: array<int, true>, rows: array<int, bool>}>> */
-    private WeakMap $byRequest;
+    // Static: post fields, user fields and resources each get their own instance, and must share one batch.
+    private static WeakMap $byRequest;
 
     public function __construct(private readonly ConnectionInterface $db)
     {
-        $this->byRequest = new WeakMap();
+        self::$byRequest ??= new WeakMap();
     }
 
     /** @param 'garage_likes'|'garage_follows' $table */
@@ -33,13 +34,13 @@ class ViewerState
         }
 
         $request = $context->request;
-        $state = $this->byRequest[$request] ?? [];
+        $state = self::$byRequest[$request] ?? [];
         $state[$table] ??= ['queued' => [], 'rows' => []];
 
         if (! array_key_exists($buildId, $state[$table]['rows'])) {
             $state[$table]['queued'][$buildId] = true;
         }
-        $this->byRequest[$request] = $state;
+        self::$byRequest[$request] = $state;
 
         return fn () => $this->load($request, $table, (int) $actor->id)[$buildId] ?? false;
     }
@@ -47,17 +48,17 @@ class ViewerState
     /** After a toggle: what this request answers from now on. */
     public function set(Context $context, string $table, int $buildId, bool $value): void
     {
-        $state = $this->byRequest[$context->request] ?? [];
+        $state = self::$byRequest[$context->request] ?? [];
         $state[$table] ??= ['queued' => [], 'rows' => []];
         $state[$table]['rows'][$buildId] = $value;
         unset($state[$table]['queued'][$buildId]);
-        $this->byRequest[$context->request] = $state;
+        self::$byRequest[$context->request] = $state;
     }
 
     /** @return array<int, bool> */
     private function load(ServerRequestInterface $request, string $table, int $userId): array
     {
-        $state = $this->byRequest[$request];
+        $state = self::$byRequest[$request];
         $ids = array_keys($state[$table]['queued']);
 
         if ($ids) {
@@ -66,7 +67,7 @@ class ViewerState
                 $state[$table]['rows'][$id] = isset($found[$id]);
             }
             $state[$table]['queued'] = [];
-            $this->byRequest[$request] = $state;
+            self::$byRequest[$request] = $state;
         }
 
         return $state[$table]['rows'];

@@ -31,7 +31,7 @@ class UserFields
                 ->visible(fn (User $user, Context $context) => $user->garage_signature_build_id
                     && $context->getActor()->hasPermission(Settings::VIEW)
                     && $this->extensions->isEnabled('fof-signature'))
-                ->get(fn (User $user, Context $context) => $this->cards->deferred($context, [(int) $user->garage_signature_build_id], fn (array $cards) => $cards[0] ?? null)),
+                ->get(fn (User $user, Context $context) => $this->cards->deferred($context, [(int) $user->garage_signature_build_id], fn (array $cards) => $cards[0] ?? null, $user)),
         ];
     }
 }

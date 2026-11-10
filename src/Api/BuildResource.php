@@ -83,9 +83,12 @@ class BuildResource extends AbstractDatabaseResource
             Endpoint\Index::make()
                 ->paginate(24, 48)
                 ->defaultInclude(['user', 'category', 'lastEntry'])
+                // The owners' groups (staff see them) in one query, not one per owner.
+                ->eagerLoadWhenIncluded(['user' => ['user.groups']])
                 ->defaultSort('-lastActivityAt'),
             Endpoint\Show::make()
-                ->defaultInclude(['user', 'category']),
+                ->defaultInclude(['user', 'category'])
+                ->eagerLoadWhenIncluded(['user' => ['user.groups']]),
             Endpoint\Create::make()
                 ->authenticated()
                 ->can(Settings::CREATE)
