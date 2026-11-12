@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $spent
  * @property Carbon|null $published_at
  * @property Carbon|null $featured_at
+ * @property Carbon|null $finished_at
  * @property Carbon|null $last_activity_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -60,6 +61,7 @@ class Build extends AbstractModel
         'follower_count' => 'integer',
         'published_at' => 'datetime',
         'featured_at' => 'datetime',
+        'finished_at' => 'datetime',
         'last_activity_at' => 'datetime',
     ];
 

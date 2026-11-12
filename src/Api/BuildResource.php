@@ -146,6 +146,15 @@ class BuildResource extends AbstractDatabaseResource
             $model->specs = $category?->cleanSpecs($model->specs) ?: null;
         }
 
+        // When it reached Finished: kept while it is for sale or retired, cleared if it goes back to work.
+        if ($model->isDirty('stage')) {
+            if ($model->stage === 'complete') {
+                $model->finished_at ??= Carbon::now();
+            } elseif (in_array($model->stage, ['planning', 'in_progress'], true)) {
+                $model->finished_at = null;
+            }
+        }
+
         if (! $model->exists || $model->isDirty('published_at') || $model->isDirty('category_id')) {
             $this->recount[spl_object_id($model)] = $model->getOriginal('category_id');
         }
@@ -236,6 +245,7 @@ class BuildResource extends AbstractDatabaseResource
                 ->writable(fn (Build $b, Context $context) => $b->exists && $context->getActor()->can('feature', $b))
                 ->set(fn (Build $b, $value) => $b->featured_at = $value ? ($b->featured_at ?? Carbon::now()) : null),
             Schema\DateTime::make('publishedAt')->property('published_at'),
+            Schema\DateTime::make('finishedAt')->property('finished_at')->nullable(),
             Schema\DateTime::make('lastActivityAt')->property('last_activity_at'),
             Schema\DateTime::make('createdAt')->property('created_at'),
 

@@ -29,6 +29,7 @@ Object.assign(GarageBuild.prototype, {
   published: Model.attribute('published'),
   featured: Model.attribute('featured'),
   publishedAt: Model.attribute('publishedAt', Model.transformDate),
+  finishedAt: Model.attribute('finishedAt', Model.transformDate),
   lastActivityAt: Model.attribute('lastActivityAt', Model.transformDate),
   createdAt: Model.attribute('createdAt', Model.transformDate),
   liked: Model.attribute('liked'),
