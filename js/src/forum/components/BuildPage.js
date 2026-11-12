@@ -14,7 +14,7 @@ import listItems from 'flarum/common/helpers/listItems';
 import extractText from 'flarum/common/utils/extractText';
 import BuildLog from './BuildLog';
 import Comments from './Comments';
-import { PhotoGrid, openLightbox } from './Lightbox';
+import { PhotoGrid } from './Lightbox';
 import { formatSpec } from './BuildCard';
 import { openBuildEditor, openEntryEditor, postAbout } from './openers';
 import useStyles from '../styles';
@@ -102,16 +102,7 @@ export default class BuildPage extends Page {
         className={'GarageBuildHero' + (cover ? '' : ' GarageBuildHero--plain')}
         style={{ '--garage-accent': categoryColor(category?.color()) }}
       >
-        {cover ? (
-          <button
-            type="button"
-            className="GarageBuildHero-cover"
-            aria-label={extractText(t('lightbox.open', { index: 1 }))}
-            onclick={() => openLightbox(build.photos(), 0, build.title())}
-          >
-            <img src={cover.url} alt="" />
-          </button>
-        ) : null}
+        {cover ? <PhotoGrid photos={build.photos()} caption={build.title()} limit={1} cover /> : null}
         <div className="GarageBuildHero-shade" />
         <div className="container GarageBuildHero-content">
           <div className="GarageBuildHero-badges">

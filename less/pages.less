@@ -487,10 +487,12 @@
 .GarageBuildHero-cover {
   position: absolute;
   inset: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: zoom-in;
+
+  a:not([hidden]) {
+    display: block;
+    height: 100%;
+    cursor: zoom-in;
+  }
 
   img {
     width: 100%;
@@ -1113,6 +1115,10 @@
   font-size: 14px;
   padding: 0 70px;
   text-align: center;
+
+  span:last-child {
+    white-space: nowrap;
+  }
 }
 
 // ------------------------------------------------------------------ profile

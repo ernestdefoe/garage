@@ -65,7 +65,8 @@ class Lightbox {
           this.start = null;
         }}
       >
-        <img className="GarageLightbox-image" src={photo.url} alt="" key={photo.url} />
+        {/* Keyed on its own: a new photo is a new image, never the old one until it loads. */}
+        {[<img className="GarageLightbox-image" src={photo.url} alt="" key={photo.url} />]}
         <button type="button" className="GarageLightbox-close" aria-label={extractText(t('lightbox.close'))} onclick={onclose}>
           <Icon name="fas fa-xmark" />
         </button>
@@ -98,30 +99,55 @@ class Lightbox {
   }
 }
 
-/** A grid of photos that open in the lightbox. */
-export function PhotoGrid({ attrs }) {
-  return {
-    view() {
-      const { photos, caption, limit } = attrs;
-      if (!photos?.length) return null;
-      const shown = limit ? photos.slice(0, limit) : photos;
-      const hidden = photos.length - shown.length;
+/**
+ * Photos that open full screen: a grid, or the build's cover (limit 1, `cover`).
+ * Every photo is a link, the ones past the limit hidden, so the viewer pages
+ * through them all. With FoF PhotoSwipe on, its viewer takes these links, as it
+ * does a post's images; otherwise Garage's own does.
+ */
+export class PhotoGrid {
+  view(vnode) {
+    const { photos, caption, limit, cover } = vnode.attrs;
+    if (!photos?.length) return null;
+    const shown = Math.min(limit || photos.length, photos.length);
+    const hidden = photos.length - shown;
+    const className = cover ? 'GarageBuildHero-cover' : 'GaragePhotos GaragePhotos--n' + Math.min(shown, 5);
 
-      return (
-        <div className={'GaragePhotos GaragePhotos--n' + Math.min(shown.length, 5)}>
-          {shown.map((photo, i) => (
-            <button
-              type="button"
-              className="GaragePhotos-item"
-              onclick={() => openLightbox(photos, i, caption)}
-              aria-label={extractText(t('lightbox.open', { index: i + 1 }))}
-            >
-              <img src={photo.small} alt="" loading="lazy" decoding="async" width={photo.w || undefined} height={photo.h || undefined} />
-              {hidden && i === shown.length - 1 ? <span className="GaragePhotos-more">+{hidden}</span> : null}
-            </button>
-          ))}
-        </div>
-      );
-    },
-  };
+    return (
+      <div className={'GarageGallery ' + className}>
+        {photos.map((photo, i) => (
+          <a
+            href={photo.url}
+            className={cover ? null : 'GaragePhotos-item'}
+            hidden={i >= shown}
+            data-pswp=""
+            data-pswp-width={photo.w || undefined}
+            data-pswp-height={photo.h || undefined}
+            onclick={(e) => {
+              if (photoswipe || e.ctrlKey || e.metaKey || e.shiftKey) return;
+              e.preventDefault();
+              openLightbox(photos, i, caption);
+            }}
+            aria-label={extractText(t('lightbox.open', { index: i + 1 }))}
+          >
+            {i < shown ? (
+              <img
+                src={cover ? photo.url : photo.small}
+                alt=""
+                loading={cover ? undefined : 'lazy'}
+                decoding="async"
+                width={photo.w || undefined}
+                height={photo.h || undefined}
+              />
+            ) : null}
+            {hidden && !cover && i === shown - 1 ? <span className="GaragePhotos-more">+{hidden}</span> : null}
+          </a>
+        ))}
+      </div>
+    );
+  }
 }
+
+// Read when this chunk loads: by then every enabled extension has booted.
+const photoswipe = flarum.extensions['fof-photoswipe']?.Gallery;
+if (photoswipe) new photoswipe(PhotoGrid, '.GarageGallery').extend(app, { name: 'ernestdefoe-garage', exports: {} });
