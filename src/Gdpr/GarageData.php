@@ -6,6 +6,7 @@ use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Comment;
 use ErnestDefoe\Garage\Entry;
 use ErnestDefoe\Garage\Erasure;
+use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Storage\Photos;
 use Flarum\Gdpr\Data\Type;
 
@@ -34,6 +35,7 @@ class GarageData extends Type
     public function export(): ?array
     {
         $photos = resolve(Photos::class);
+        $text = resolve(RichText::class);
         $export = [];
 
         foreach (Build::query()->where('user_id', $this->user->id)->get() as $build) {
@@ -41,9 +43,11 @@ class GarageData extends Type
             $entries = Entry::query()->where('build_id', $build->id)->orderBy('happened_on')->get();
 
             $export[] = ["$folder/build.json" => $this->encodeForExport([
-                ...$build->only(['title', 'tagline', 'story', 'stage', 'specs', 'spent', 'published_at', 'created_at', 'updated_at']),
+                ...$build->only(['title', 'tagline']),
+                'story' => $text->text($build->story, $build->story_formatted, $build),
+                ...$build->only(['stage', 'specs', 'spent', 'published_at', 'created_at', 'updated_at']),
                 'photos' => $photos->presentAll($build->photos),
-                'log' => $entries->map(fn (Entry $e) => [...$e->only(['title', 'body', 'cost', 'happened_on', 'created_at']), 'photos' => $photos->presentAll($e->photos)])->all(),
+                'log' => $entries->map(fn (Entry $e) => [...$e->only(['title']), 'body' => $text->text($e->body, $e->body_formatted, $e), ...$e->only(['cost', 'happened_on', 'created_at']), 'photos' => $photos->presentAll($e->photos)])->all(),
             ])];
 
             foreach ([...($build->photos ?? []), ...$entries->flatMap(fn (Entry $e) => $e->photos ?? [])->all()] as $i => $photo) {

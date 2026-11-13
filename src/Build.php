@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $slug
  * @property string|null $tagline
  * @property string|null $story
+ * @property bool $story_formatted
  * @property string $stage
  * @property array<string, string|float|int>|null $specs
  * @property list<array<string, mixed>>|null $photos
@@ -62,6 +63,7 @@ class Build extends AbstractModel
         'published_at' => 'datetime',
         'featured_at' => 'datetime',
         'finished_at' => 'datetime',
+        'story_formatted' => 'boolean',
         'last_activity_at' => 'datetime',
     ];
 

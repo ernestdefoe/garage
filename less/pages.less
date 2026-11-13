@@ -1152,6 +1152,68 @@
 
 // -------------------------------------------------------------------- forms
 
+// Scribe's editor in the story and update fields: framed like the other fields,
+// its toolbar wrapping (a scrolling row would clip the menus its buttons open),
+// and core's submit button hidden (the form has its own).
+.GarageEdit-editor {
+  // Form-group is a flex column: without this the editor shrinks to its text.
+  width: 100%;
+}
+.GarageEdit-editor .TextEditor {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--control-bg);
+  border-radius: var(--border-radius, 4px);
+  background: var(--body-bg);
+  color: var(--text-color);
+
+  .TextEditor-editorContainer,
+  .ComposerBody-mentionsWrapper,
+  .ComposerBody-emojiWrapper,
+  .TextEditor-editor {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .TextEditor-editor {
+    min-height: 160px;
+    max-height: none;
+    padding: 10px 13px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .TextEditor-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 4px;
+    margin: 0;
+    padding: 6px 10px;
+    border-top: 1px solid var(--control-bg);
+    overflow: visible;
+    white-space: normal;
+  }
+  .TextEditor-controls > .item {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+  .TextEditor-toolbar {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+  }
+  .item-submit {
+    display: none;
+  }
+}
+.GarageStory-text .Post-body,
+.GarageLog-body .Post-body {
+  > :last-child {
+    margin-bottom: 0;
+  }
+}
+
 .GarageEdit-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(~"min(200px, 100%)", 1fr));

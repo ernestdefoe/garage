@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $user_id
  * @property string $title
  * @property string|null $body
+ * @property bool $body_formatted
  * @property list<array<string, mixed>>|null $photos
  * @property string|null $cost
  * @property Carbon $happened_on
@@ -43,6 +44,7 @@ class Entry extends AbstractModel
         'photos' => 'array',
         'happened_on' => 'date',
         'comment_count' => 'integer',
+        'body_formatted' => 'boolean',
     ];
 
     /** @return BelongsTo<Build, $this> */

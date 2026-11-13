@@ -5,6 +5,7 @@ import Select from 'flarum/common/components/Select';
 import Stream from 'flarum/common/utils/Stream';
 import extractText from 'flarum/common/utils/extractText';
 import PhotoManager, { PhotoQueue } from './PhotoManager';
+import TextField from './TextField';
 import useStyles from '../styles';
 import { t, buildUrl, STAGES } from '../util';
 
@@ -28,7 +29,8 @@ export default class BuildEditModal extends FormModal {
     this.name = Stream(build?.title() || '');
     this.tagline = Stream(build?.tagline() || '');
     this.stage = Stream(build?.stage() || 'in_progress');
-    this.story = Stream(build?.story() || '');
+    // [field, value] once the story is changed: 'story' (plain) or 'storySource' (Scribe's HTML).
+    this.storyEdit = null;
     this.specs = { ...(build?.specs() || {}) };
     this.publish = Stream(true);
     this.queue = new PhotoQueue(MAX_PHOTOS);
@@ -114,14 +116,14 @@ export default class BuildEditModal extends FormModal {
 
           <div className="Form-group">
             <label for="garage-story">{t('edit.story')}</label>
-            <textarea
+            <TextField
               id="garage-story"
               name="story"
-              className="FormControl"
               rows="7"
-              maxlength="20000"
-              bidi={this.story}
+              text={this.build?.story()}
+              source={this.build?.storySource()}
               placeholder={extractText(t('edit.story_placeholder'))}
+              onchange={(kind, value) => (this.storyEdit = [kind === 'source' ? 'storySource' : 'story', value])}
             />
           </div>
 
@@ -199,10 +201,10 @@ export default class BuildEditModal extends FormModal {
       title: this.name(),
       tagline: this.tagline() || null,
       stage: this.stage(),
-      story: this.story() || null,
       specs: this.specs,
       relationships: { category: this.category() },
     };
+    if (this.storyEdit) data[this.storyEdit[0]] = this.storyEdit[1] || null;
     // A new build is saved as a draft, and published once its photos are up: followers never see it half-done.
     if (isNew) data.published = false;
 

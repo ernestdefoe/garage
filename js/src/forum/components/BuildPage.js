@@ -375,10 +375,10 @@ export default class BuildPage extends Page {
           </div>
         ) : null}
 
-        {build.story() ? (
+        {build.story() || build.storyHtml() ? (
           <section className="GarageSection GarageStory">
             <h2 className="GarageSection-title">{t('build.story')}</h2>
-            <div className="GarageStory-text">{richText(build.story())}</div>
+            <div className="GarageStory-text">{richText(build.story(), build.storyHtml())}</div>
           </section>
         ) : build.canEdit() ? (
           <button type="button" className="GarageNudge" onclick={() => openBuildEditor({ build })}>

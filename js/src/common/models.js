@@ -18,6 +18,8 @@ Object.assign(GarageBuild.prototype, {
   slug: Model.attribute('slug'),
   tagline: Model.attribute('tagline'),
   story: Model.attribute('story'),
+  storySource: Model.attribute('storySource'),
+  storyHtml: Model.attribute('storyHtml'),
   stage: Model.attribute('stage'),
   specs: Model.attribute('specs'),
   photos: Model.attribute('photos'),
@@ -54,6 +56,8 @@ export class GarageEntry extends Model {}
 Object.assign(GarageEntry.prototype, {
   title: Model.attribute('title'),
   body: Model.attribute('body'),
+  bodySource: Model.attribute('bodySource'),
+  bodyHtml: Model.attribute('bodyHtml'),
   cost: Model.attribute('cost'),
   happenedOn: Model.attribute('happenedOn'),
   photos: Model.attribute('photos'),

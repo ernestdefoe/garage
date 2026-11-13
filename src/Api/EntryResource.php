@@ -7,6 +7,7 @@ use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Comment;
 use ErnestDefoe\Garage\Entry;
 use ErnestDefoe\Garage\Job\NotifyFollowers;
+use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Storage\Photos;
 use Flarum\Api\Context;
 use Flarum\Api\Endpoint;
@@ -32,7 +33,11 @@ class EntryResource extends AbstractDatabaseResource
     /** @var array<int, bool> Entries created in this request, by object id: their followers are told once saved. */
     private array $fresh = [];
 
-    public function __construct(private readonly Photos $photos, private readonly TranslatorInterface $translator)
+    public function __construct(
+        private readonly Photos $photos,
+        private readonly TranslatorInterface $translator,
+        private readonly RichText $richText,
+    )
     {
     }
 
@@ -183,10 +188,7 @@ class EntryResource extends AbstractDatabaseResource
                 ->requiredOnCreate()
                 ->rule('max:120')
                 ->rule('regex:/\S/'),
-            Schema\Str::make('body')
-                ->nullable()
-                ->writable($editable)
-                ->rule('max:20000'),
+            ...$this->richText->fields('body', 'body', 'body_formatted', $editable, fn () => true),
             Schema\Number::make('cost')
                 ->nullable()
                 ->writable($editable)

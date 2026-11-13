@@ -3,6 +3,7 @@
 namespace ErnestDefoe\Garage\Http;
 
 use ErnestDefoe\Garage\Build;
+use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Storage\Photos;
 use Flarum\Frontend\Document;
 use Flarum\Http\RequestUtil;
@@ -23,6 +24,7 @@ class GaragePageContent
         private readonly UrlGenerator $url,
         private readonly TranslatorInterface $translator,
         private readonly Photos $photos,
+        private readonly RichText $richText,
     ) {
     }
 
@@ -40,7 +42,7 @@ class GaragePageContent
         }
 
         $url = $this->url->to('forum')->route('garage.build', ['id' => $build->id.'-'.$build->slug]);
-        $description = Str::limit(trim(preg_replace('/\s+/', ' ', (string) ($build->tagline ?: $build->story))), 200);
+        $description = Str::limit(trim(preg_replace('/\s+/', ' ', (string) ($build->tagline ?: $this->richText->text($build->story, $build->story_formatted, $build)))), 200);
         $cover = $this->photos->present($build->photos[0] ?? null);
 
         $document->title = $build->title;

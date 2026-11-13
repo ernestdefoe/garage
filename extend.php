@@ -23,6 +23,7 @@ use ErnestDefoe\Garage\Http\GaragePageContent;
 use ErnestDefoe\Garage\Listener\ForgetDeletedUser;
 use ErnestDefoe\Garage\Notification\CommentBlueprint;
 use ErnestDefoe\Garage\Notification\NewEntryBlueprint;
+use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Search;
 use ErnestDefoe\Garage\Settings;
 use ErnestDefoe\Garage\Storage\Photos;
@@ -89,6 +90,10 @@ return [
             Schema\Str::make('garageUploads')
                 ->visible(fn ($forum, Context $context) => $context->getActor()->hasPermission(Settings::CREATE))
                 ->get(fn ($forum, Context $context) => resolve(Photos::class)->viaFof($context->getActor()) ? 'fof' : 'own'),
+            // Stories and updates are written in Scribe's editor when it is on.
+            Schema\Boolean::make('garageRichText')
+                ->visible(fn ($forum, Context $context) => $context->getActor()->hasPermission(Settings::CREATE))
+                ->get(fn () => resolve(RichText::class)->editor()),
         ]),
 
     (new Extend\Settings())

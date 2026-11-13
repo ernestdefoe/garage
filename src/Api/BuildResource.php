@@ -7,6 +7,7 @@ use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Category;
 use ErnestDefoe\Garage\Counts;
 use ErnestDefoe\Garage\Entry;
+use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Settings;
 use ErnestDefoe\Garage\Storage\Photos;
 use Flarum\Api\Context;
@@ -41,6 +42,7 @@ class BuildResource extends AbstractDatabaseResource
         private readonly ViewerState $viewer,
         private readonly TranslatorInterface $translator,
         private readonly ConnectionInterface $db,
+        private readonly RichText $richText,
     ) {
     }
 
@@ -204,11 +206,7 @@ class BuildResource extends AbstractDatabaseResource
                 ->nullable()
                 ->writable($owner)
                 ->rule('max:160'),
-            Schema\Str::make('story')
-                ->nullable()
-                ->writable($owner)
-                ->rule('max:20000')
-                ->visible(fn (Build $b, Context $context) => ! $context->listing(self::class)),
+            ...$this->richText->fields('story', 'story', 'story_formatted', $owner, fn (Build $b, Context $context) => ! $context->listing(self::class)),
             Schema\Str::make('stage')
                 ->writable($owner)
                 ->in(Build::STAGES),

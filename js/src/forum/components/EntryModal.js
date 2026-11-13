@@ -4,6 +4,7 @@ import Button from 'flarum/common/components/Button';
 import Stream from 'flarum/common/utils/Stream';
 import extractText from 'flarum/common/utils/extractText';
 import PhotoManager, { PhotoQueue } from './PhotoManager';
+import TextField from './TextField';
 import useStyles from '../styles';
 import { t } from '../util';
 
@@ -24,7 +25,8 @@ export default class EntryModal extends FormModal {
     useStyles();
     const entry = (this.entry = this.attrs.entry || null);
     this.headline = Stream(entry?.title() || '');
-    this.body = Stream(entry?.body() || '');
+    // [field, value] once the text is changed: 'body' (plain) or 'bodySource' (Scribe's HTML).
+    this.bodyEdit = null;
     this.cost = Stream(entry?.cost() ?? '');
     this.happenedOn = Stream(entry ? String(entry.happenedOn()).slice(0, 10) : today());
     this.queue = new PhotoQueue(MAX_PHOTOS);
@@ -79,14 +81,14 @@ export default class EntryModal extends FormModal {
           </div>
           <div className="Form-group">
             <label for="garage-entry-body">{t('entry_edit.body')}</label>
-            <textarea
+            <TextField
               id="garage-entry-body"
               name="body"
-              className="FormControl"
               rows="6"
-              maxlength="20000"
-              bidi={this.body}
+              text={this.entry?.body()}
+              source={this.entry?.bodySource()}
               placeholder={extractText(t('entry_edit.body_placeholder'))}
+              onchange={(kind, value) => (this.bodyEdit = [kind === 'source' ? 'bodySource' : 'body', value])}
             />
           </div>
           <fieldset className="GarageEdit-photos">
@@ -119,10 +121,10 @@ export default class EntryModal extends FormModal {
     const cost = String(this.cost()).trim();
     const data = {
       title: this.headline(),
-      body: this.body() || null,
       cost: cost === '' ? null : Number(cost),
       happenedOn: this.happenedOn() || today(),
     };
+    if (this.bodyEdit) data[this.bodyEdit[0]] = this.bodyEdit[1] || null;
     if (isNew) data.relationships = { build };
 
     try {

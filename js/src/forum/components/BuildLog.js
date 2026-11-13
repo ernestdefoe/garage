@@ -87,7 +87,7 @@ export default class BuildLog {
               </span>
             ) : null}
           </header>
-          {entry.body() ? <div className="GarageLog-body">{richText(entry.body())}</div> : null}
+          {entry.body() || entry.bodyHtml() ? <div className="GarageLog-body">{richText(entry.body(), entry.bodyHtml())}</div> : null}
           <PhotoGrid photos={entry.photos()} caption={entry.title()} limit={5} />
           <footer className="GarageLog-footer">
             {build.published() ? (
