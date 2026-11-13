@@ -68,13 +68,20 @@ class FinishedTest extends TestCase
     public function builds_already_finished_are_backfilled_from_their_log_or_publishing()
     {
         $db = $this->database();
-        $db->getSchemaBuilder()->table('garage_builds', fn (Blueprint $table) => $table->dropColumn('finished_at'));
-        $migration = require __DIR__.'/../../../migrations/2026_11_12_000009_add_finished_at_to_garage_builds.php';
-        $migration['up']($db->getSchemaBuilder());
+        try {
+            $db->getSchemaBuilder()->table('garage_builds', fn (Blueprint $table) => $table->dropColumn('finished_at'));
+            $migration = require __DIR__.'/../../../migrations/2026_11_12_000009_add_finished_at_to_garage_builds.php';
+            $migration['up']($db->getSchemaBuilder());
 
-        $at = fn (int $id) => ($v = $db->table('garage_builds')->where('id', $id)->value('finished_at')) ? substr((string) $v, 0, 10) : null;
-        $this->assertNull($at(1), 'in progress: not finished');
-        $this->assertSame('2026-05-20', $at(2), 'the latest log entry');
-        $this->assertSame('2026-01-05', $at(3), 'a draft with no log: the day it was added');
+            $at = fn (int $id) => ($v = $db->table('garage_builds')->where('id', $id)->value('finished_at')) ? substr((string) $v, 0, 10) : null;
+            $this->assertNull($at(1), 'in progress: not finished');
+            $this->assertSame('2026-05-20', $at(2), 'the latest log entry');
+            $this->assertSame('2026-01-05', $at(3), 'a draft with no log: the day it was added');
+        } finally {
+            // On MySQL the schema change commits the test's transaction, so its rows would outlive it.
+            $db->table('garage_entries')->whereIn('id', [1, 2])->delete();
+            $db->table('garage_builds')->whereIn('id', [1, 2, 3])->delete();
+            $db->table('garage_categories')->where('id', 1)->delete();
+        }
     }
 }
