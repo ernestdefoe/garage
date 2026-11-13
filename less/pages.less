@@ -1206,6 +1206,11 @@
   .item-submit {
     display: none;
   }
+  // FoF Upload's media manager opens as a window of its own, which would close
+  // this form and lose what was written. Its upload button inserts in place.
+  .item-fof-upload-media {
+    display: none;
+  }
 }
 .GarageStory-text .Post-body,
 .GarageLog-body .Post-body {
