@@ -60,7 +60,7 @@ return [
         ->namespace('ernestdefoe-garage', __DIR__.'/views'),
 
     (new Extend\Filesystem())
-        ->disk(Photos::DISK, fn (Paths $paths, UrlGenerator $url) => [
+        ->disk('ernestdefoe-garage', fn (Paths $paths, UrlGenerator $url) => [
             'root' => "$paths->public/assets/garage",
             'url' => $url->to('forum')->path('assets/garage'),
             'visibility' => 'public',
@@ -96,14 +96,16 @@ return [
                 ->get(fn () => resolve(RichText::class)->editor()),
         ]),
 
+    // String literals, not Settings constants: this runs while Flarum boots, and a
+    // class this extension autoloads here fatals every request mid-deploy.
     (new Extend\Settings())
-        ->default(Settings::NAV, true)
-        ->default(Settings::USE_FOF_UPLOAD, true)
-        ->default(Settings::MAX_UPLOAD_KB, 10240)
-        ->default(Settings::CURRENCY, '$')
-        ->serializeToForum('garageNav', Settings::NAV, 'boolval')
-        ->serializeToForum('garageCurrency', Settings::CURRENCY, fn ($value) => mb_substr((string) $value, 0, 6))
-        ->serializeToForum('garageMaxUploadKb', Settings::MAX_UPLOAD_KB, 'intval'),
+        ->default('ernestdefoe-garage.nav', true)
+        ->default('ernestdefoe-garage.use_fof_upload', true)
+        ->default('ernestdefoe-garage.max_upload_kb', 10240)
+        ->default('ernestdefoe-garage.currency', '$')
+        ->serializeToForum('garageNav', 'ernestdefoe-garage.nav', 'boolval')
+        ->serializeToForum('garageCurrency', 'ernestdefoe-garage.currency', fn ($value) => mb_substr((string) $value, 0, 6))
+        ->serializeToForum('garageMaxUploadKb', 'ernestdefoe-garage.max_upload_kb', 'intval'),
 
     (new Extend\SearchDriver(DatabaseSearchDriver::class))
         ->addSearcher(Build::class, Search\BuildSearcher::class)
