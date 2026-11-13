@@ -20,6 +20,9 @@ const today = () => {
  * it. The build's followers are told about a new one.
  */
 export default class EntryModal extends FormModal {
+  // Windows opened over this form stack on it (see forum/index.js).
+  static keepsOthersOnTop = true;
+
   oninit(vnode) {
     super.oninit(vnode);
     useStyles();

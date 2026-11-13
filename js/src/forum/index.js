@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
-import { extend } from 'flarum/common/extend';
+import { extend, override } from 'flarum/common/extend';
+import ModalManagerState from 'flarum/common/states/ModalManagerState';
 import LinkButton from 'flarum/common/components/LinkButton';
 import UserPage from 'flarum/forum/components/UserPage';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
@@ -18,6 +19,12 @@ import { loadStyles } from './styles';
 
 app.initializers.add('ernestdefoe-garage', () => {
   registerModels(app);
+
+  // A window opened over a build or update form (FoF Upload's file-name prompt,
+  // say) stacks on top instead of replacing it, so what was written isn't lost.
+  override(ModalManagerState.prototype, 'show', function (original, componentClass, attrs, stack = false) {
+    return original(componentClass, attrs, stack || !!this.modal?.componentClass?.keepsOthersOnTop);
+  });
 
   // Each page and the shared styles load side by side.
   const page = (load) => () => Promise.all([load(), loadStyles()]).then(([module]) => module);

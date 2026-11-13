@@ -18,6 +18,9 @@ const MAX_PHOTOS = 24;
  * as a draft.
  */
 export default class BuildEditModal extends FormModal {
+  // Windows opened over this form stack on it (see forum/index.js).
+  static keepsOthersOnTop = true;
+
   oninit(vnode) {
     super.oninit(vnode);
     useStyles();
