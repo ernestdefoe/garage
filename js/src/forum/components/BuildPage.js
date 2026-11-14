@@ -172,9 +172,12 @@ export default class BuildPage extends Page {
         className={'Button ' + className + (following ? ' GarageButton--on' : '')}
         icon={following ? 'fas fa-bell' : 'far fa-bell'}
         aria-pressed={following ? 'true' : 'false'}
+        title={following ? extractText(t('build.unfollow')) : undefined}
         onclick={() => (app.session.user ? build.save({ followed: !following }) : logIn())}
       >
-        {t(following ? 'build.following' : 'build.follow')}
+        {following
+          ? [<span className="GarageFollow-state">{t('build.following')}</span>, <span className="GarageFollow-undo">{t('build.unfollow')}</span>]
+          : t('build.follow')}
       </Button>
     );
   }

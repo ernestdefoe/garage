@@ -594,8 +594,27 @@
     width: 100%;
   }
 }
-.GarageBuildPage .GarageButton--on {
-  color: var(--garage-accent, var(--primary-color));
+// A filled button keeps its own text colour when on: the accent is its background.
+.GarageBuildPage .GarageButton--on:not(.Button--primary) {
+  // Mixed toward the text colour: darker on light schemes, lighter on dark
+  // ones, so it reads (AA) on the button in both.
+  color: color-mix(in srgb, var(--garage-accent, var(--primary-color)) 60%, var(--text-color));
+}
+// Following a build: "Following", and "Unfollow" while a mouse is over it (the
+// button's title says so on touch, where hover sticks after a tap).
+.GarageFollow-undo {
+  display: none;
+}
+@media (hover: hover) {
+  .GarageButton--on:hover,
+  .GarageButton--on:focus-visible {
+    .GarageFollow-state {
+      display: none;
+    }
+    .GarageFollow-undo {
+      display: inline;
+    }
+  }
 }
 .GarageBuildPage .GarageLike.GarageButton--on .icon {
   color: #e11d48;
