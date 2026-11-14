@@ -1183,6 +1183,27 @@
     border-radius: 0;
     box-shadow: none;
   }
+  // With a mouse, a handle in the corner makes the box taller, like a
+  // textarea's; the text scrolls inside it.
+  @media (hover: hover) and (pointer: fine) {
+    .Scribe-editor {
+      height: 220px;
+      resize: vertical;
+      overflow: auto;
+    }
+  }
+  // Touch screens draw no handle, so the box grows with the text instead and
+  // the form scrolls.
+  @media not ((hover: hover) and (pointer: fine)) {
+    // Core gives every FormControl a fixed height; this one follows its text.
+    .Scribe-editor {
+      height: auto;
+    }
+    .Scribe-editor .ProseMirror {
+      flex: 1 0 auto;
+      overflow: visible;
+    }
+  }
   .TextEditor-controls {
     display: flex;
     flex-wrap: wrap;
@@ -1211,6 +1232,11 @@
   .item-fof-upload-media {
     display: none;
   }
+}
+// Scribe puts its "/" menu on the page body, layered for the composer, which
+// sits below windows: while a build or update form is open, lift it above.
+body:has(.GarageEdit-editor) .Scribe-slashMenu {
+  z-index: calc(var(--zindex-modal, 1050) + 10);
 }
 .GarageStory-text .Post-body,
 .GarageLog-body .Post-body {
