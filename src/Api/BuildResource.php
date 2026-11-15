@@ -196,6 +196,21 @@ class BuildResource extends AbstractDatabaseResource
         $owner = fn (Build $b, Context $context) => ! $b->exists || $context->getActor()->can('update', $b);
 
         return [
+            ...$this->content($owner),
+            ...$this->viewerFields(),
+            ...$this->abilities(),
+            ...$this->relationships($owner),
+        ];
+    }
+
+    /**
+     * What the build is: its text, spec sheet, photos, counts and dates.
+     *
+     * @return list<Schema\Attribute>
+     */
+    private function content(\Closure $owner): array
+    {
+        return [
             Schema\Str::make('title')
                 ->writable($owner)
                 ->requiredOnCreate()
@@ -247,7 +262,17 @@ class BuildResource extends AbstractDatabaseResource
             Schema\DateTime::make('finishedAt')->property('finished_at')->nullable(),
             Schema\DateTime::make('lastActivityAt')->property('last_activity_at'),
             Schema\DateTime::make('createdAt')->property('created_at'),
+        ];
+    }
 
+    /**
+     * The viewer's own likes, follows and signature choice: batched per request (ViewerState).
+     *
+     * @return list<Schema\Attribute>
+     */
+    private function viewerFields(): array
+    {
+        return [
             Schema\Boolean::make('liked')
                 ->get(fn (Build $b, Context $context) => $this->viewer->deferred($context, Like::class, $b->id))
                 ->writable(fn (Build $b, Context $context) => $b->exists && $context->getActor()->can('like', $b))
@@ -262,7 +287,17 @@ class BuildResource extends AbstractDatabaseResource
                 ->get(fn (Build $b, Context $context) => (int) $context->getActor()->garage_signature_build_id === $b->id)
                 ->writable(fn (Build $b, Context $context) => $b->exists && $b->isOwnedBy($context->getActor()))
                 ->set(fn (Build $b, $value, Context $context) => $this->signature($b, $context->getActor(), (bool) $value)),
+        ];
+    }
 
+    /**
+     * What the viewer may do with the build: the policy's answers.
+     *
+     * @return list<Schema\Attribute>
+     */
+    private function abilities(): array
+    {
+        return [
             Schema\Boolean::make('canEdit')
                 ->get(fn (Build $b, Context $context) => $context->getActor()->can('update', $b)),
             Schema\Boolean::make('canDelete')
@@ -275,7 +310,13 @@ class BuildResource extends AbstractDatabaseResource
                 ->get(fn (Build $b, Context $context) => $context->getActor()->can('follow', $b)),
             Schema\Boolean::make('canComment')
                 ->get(fn (Build $b, Context $context) => $context->getActor()->can('comment', $b)),
+        ];
+    }
 
+    /** @return list<Schema\Relationship\ToOne> */
+    private function relationships(\Closure $owner): array
+    {
+        return [
             Schema\Relationship\ToOne::make('user')
                 ->type('users')
                 ->includable(),

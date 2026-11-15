@@ -98,41 +98,7 @@ export default class PhotoManager {
         }}
       >
         <ul className="GaragePhotoManager-list">
-          {saved.map((photo: GaragePhoto, i: number) =>
-            tile(photo.small, i, [
-              cover && i > 0 ? (
-                <Button
-                  className="Button Button--icon"
-                  icon="fas fa-star"
-                  aria-label={extractText(t('edit.make_cover'))}
-                  title={extractText(t('edit.make_cover'))}
-                  onclick={() => this.order(endpoint!, model!, i, 0)}
-                />
-              ) : null,
-              i > 0 ? (
-                <Button
-                  className="Button Button--icon"
-                  icon="fas fa-arrow-left"
-                  aria-label={extractText(t('edit.move_left'))}
-                  onclick={() => this.order(endpoint!, model!, i, i - 1)}
-                />
-              ) : null,
-              i < saved.length - 1 ? (
-                <Button
-                  className="Button Button--icon"
-                  icon="fas fa-arrow-right"
-                  aria-label={extractText(t('edit.move_right'))}
-                  onclick={() => this.order(endpoint!, model!, i, i + 1)}
-                />
-              ) : null,
-              <Button
-                className="Button Button--icon"
-                icon="far fa-trash-alt"
-                aria-label={extractText(t('edit.remove_photo'))}
-                onclick={() => this.remove(endpoint!, model!, i)}
-              />,
-            ])
-          )}
+          {saved.map((photo: GaragePhoto, i: number) => tile(photo.small, i, this.savedTools(vnode.attrs, saved.length, i)))}
           {queue.files.map((item: QueuedPhoto, j: number) =>
             tile(item.preview, saved.length + j, [
               <span className="GaragePhotoManager-pending">{t('edit.pending')}</span>,
@@ -144,27 +110,46 @@ export default class PhotoManager {
               />,
             ])
           )}
-          {!full ? (
-            <li className="GaragePhotoManager-add">
-              <label>
-                <Icon name="fas fa-camera" />
-                <span>{t('edit.add_photos')}</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  onchange={(e: Event) => {
-                    const input = e.target as HTMLInputElement;
-                    queue.add(input.files!, saved.length);
-                    input.value = '';
-                  }}
-                />
-              </label>
-            </li>
-          ) : null}
+          {!full ? this.addTile(queue, saved.length) : null}
         </ul>
         <p className="helpText">{t(cover ? 'edit.photos_help' : 'edit.entry_photos_help', { count: queue.max })}</p>
       </div>
+    );
+  }
+
+  /** A saved photo's buttons: make it the cover, move it, remove it. They show only for saved photos, so the model and endpoint exist. */
+  savedTools({ model, endpoint, cover = true }: PhotoManagerAttrs, count: number, i: number): Mithril.Children {
+    const button = (icon: string, label: string, onclick: () => void) => (
+      <Button className="Button Button--icon" icon={icon} aria-label={extractText(t(label))} title={extractText(t(label))} onclick={onclick} />
+    );
+
+    return [
+      cover && i > 0 ? button('fas fa-star', 'edit.make_cover', () => this.order(endpoint!, model!, i, 0)) : null,
+      i > 0 ? button('fas fa-arrow-left', 'edit.move_left', () => this.order(endpoint!, model!, i, i - 1)) : null,
+      i < count - 1 ? button('fas fa-arrow-right', 'edit.move_right', () => this.order(endpoint!, model!, i, i + 1)) : null,
+      button('far fa-trash-alt', 'edit.remove_photo', () => this.remove(endpoint!, model!, i)),
+    ];
+  }
+
+  /** The "add photos" tile: a file picker. */
+  addTile(queue: PhotoQueue, saved: number) {
+    return (
+      <li className="GaragePhotoManager-add">
+        <label>
+          <Icon name="fas fa-camera" />
+          <span>{t('edit.add_photos')}</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onchange={(e: Event) => {
+              const input = e.target as HTMLInputElement;
+              queue.add(input.files!, saved);
+              input.value = '';
+            }}
+          />
+        </label>
+      </li>
     );
   }
 

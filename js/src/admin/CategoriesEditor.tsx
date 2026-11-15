@@ -123,140 +123,11 @@ export default class CategoriesEditor {
 
     return (
       <div className="GarageCategories-form">
-        <div className="GarageCategories-grid">
-          <label>
-            {t('name')}
-            <input
-              className="FormControl"
-              maxlength="80"
-              value={d.name}
-              oninput={(e: InputEvent) => (d.name = (e.target as HTMLInputElement).value)}
-            />
-          </label>
-          <label>
-            {t('icon')}
-            <input
-              className="FormControl"
-              maxlength="60"
-              value={d.icon}
-              placeholder="fas fa-car"
-              oninput={(e: InputEvent) => (d.icon = (e.target as HTMLInputElement).value)}
-            />
-          </label>
-          <label>
-            {t('color')}
-            <span className="GarageCategories-color">
-              <input
-                type="color"
-                value={/^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#c2410c'}
-                oninput={(e: InputEvent) => (d.color = (e.target as HTMLInputElement).value)}
-              />
-              <input
-                className="FormControl"
-                maxlength="9"
-                value={d.color}
-                oninput={(e: InputEvent) => (d.color = (e.target as HTMLInputElement).value)}
-              />
-            </span>
-          </label>
-        </div>
-        <p className="helpText">{t('icon_help')}</p>
-        <label>
-          {t('description')}
-          <input
-            className="FormControl"
-            maxlength="300"
-            value={d.description}
-            oninput={(e: InputEvent) => (d.description = (e.target as HTMLInputElement).value)}
-          />
-        </label>
+        {this.details(d)}
 
         <h4>{t('fields')}</h4>
         <p className="helpText">{t('fields_help')}</p>
-        <ol className="GarageFields">
-          {d.fields.map((field, i) => (
-            <li className="GarageFields-item">
-              <div className="GarageFields-main">
-                <input
-                  className="FormControl"
-                  maxlength="60"
-                  value={field.label}
-                  placeholder={extractText(t('field_label'))}
-                  aria-label={extractText(t('field_label'))}
-                  oninput={(e: InputEvent) => (field.label = (e.target as HTMLInputElement).value)}
-                />
-                <Select
-                  options={types}
-                  value={field.type}
-                  onchange={(type: GarageField['type']) => (field.type = type)}
-                  aria-label={extractText(t('field_type'))}
-                />
-                <Button
-                  className="Button Button--icon"
-                  icon="fas fa-arrow-up"
-                  disabled={i === 0}
-                  aria-label={extractText(t('move_up'))}
-                  onclick={() => this.swap(d.fields, i, i - 1)}
-                />
-                <Button
-                  className="Button Button--icon"
-                  icon="fas fa-arrow-down"
-                  disabled={i === d.fields.length - 1}
-                  aria-label={extractText(t('move_down'))}
-                  onclick={() => this.swap(d.fields, i, i + 1)}
-                />
-                <Button
-                  className="Button Button--icon"
-                  icon="far fa-trash-alt"
-                  aria-label={extractText(t('remove_field'))}
-                  onclick={() => d.fields.splice(i, 1)}
-                />
-              </div>
-              {field.type === 'select' ? (
-                <label className="GarageFields-extra">
-                  {t('options')}
-                  <textarea
-                    className="FormControl"
-                    rows="3"
-                    value={field.optionsText || ''}
-                    oninput={(e: InputEvent) => (field.optionsText = (e.target as HTMLTextAreaElement).value)}
-                  />
-                  <span className="helpText">{t('options_help')}</span>
-                </label>
-              ) : null}
-              {field.type === 'number' ? (
-                <label className="GarageFields-extra GarageFields-unit">
-                  {t('unit')}
-                  <input
-                    className="FormControl"
-                    maxlength="12"
-                    value={field.unit || ''}
-                    placeholder="hp, kg, mm…"
-                    oninput={(e: InputEvent) => (field.unit = (e.target as HTMLInputElement).value)}
-                  />
-                </label>
-              ) : null}
-              <div className="GarageFields-flags">
-                {field.type !== 'link' ? (
-                  <label className="checkbox">
-                    <input type="checkbox" checked={!!field.card} onchange={(e: Event) => (field.card = (e.target as HTMLInputElement).checked)} />
-                    {t('card')}
-                  </label>
-                ) : null}
-                {field.type === 'select' ? (
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={!!field.filter}
-                      onchange={(e: Event) => (field.filter = (e.target as HTMLInputElement).checked)}
-                    />
-                    {t('filter')}
-                  </label>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ol>
+        <ol className="GarageFields">{d.fields.map((field, i) => this.fieldRow(d, field, i, types))}</ol>
         <Button className="Button" icon="fas fa-plus" onclick={() => d.fields.push({ label: '', type: 'text', card: false })}>
           {t('add_field')}
         </Button>
@@ -276,6 +147,120 @@ export default class CategoriesEditor {
         </div>
       </div>
     );
+  }
+
+  /** A text box bound to one value of the draft. */
+  input(value: string, set: (value: string) => void, attrs: Record<string, unknown> = {}) {
+    return <input className="FormControl" value={value} oninput={(e: InputEvent) => set((e.target as HTMLInputElement).value)} {...attrs} />;
+  }
+
+  /** The category's name, icon, colour and description. */
+  details(d: Draft) {
+    return [
+      <div className="GarageCategories-grid">
+        <label>
+          {t('name')}
+          {this.input(d.name, (v) => (d.name = v), { maxlength: 80 })}
+        </label>
+        <label>
+          {t('icon')}
+          {this.input(d.icon, (v) => (d.icon = v), { maxlength: 60, placeholder: 'fas fa-car' })}
+        </label>
+        <label>
+          {t('color')}
+          <span className="GarageCategories-color">
+            <input
+              type="color"
+              value={/^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#c2410c'}
+              oninput={(e: InputEvent) => (d.color = (e.target as HTMLInputElement).value)}
+            />
+            {this.input(d.color, (v) => (d.color = v), { maxlength: 9 })}
+          </span>
+        </label>
+      </div>,
+      <p className="helpText">{t('icon_help')}</p>,
+      <label>
+        {t('description')}
+        {this.input(d.description, (v) => (d.description = v), { maxlength: 300 })}
+      </label>,
+    ];
+  }
+
+  /** One field of the spec sheet: its label, type and order, then what its type needs. */
+  fieldRow(d: Draft, field: DraftField, i: number, types: Record<string, string>) {
+    return (
+      <li className="GarageFields-item">
+        <div className="GarageFields-main">
+          {this.input(field.label, (v) => (field.label = v), {
+            maxlength: 60,
+            placeholder: extractText(t('field_label')),
+            'aria-label': extractText(t('field_label')),
+          })}
+          <Select
+            options={types}
+            value={field.type}
+            onchange={(type: GarageField['type']) => (field.type = type)}
+            aria-label={extractText(t('field_type'))}
+          />
+          <Button
+            className="Button Button--icon"
+            icon="fas fa-arrow-up"
+            disabled={i === 0}
+            aria-label={extractText(t('move_up'))}
+            onclick={() => this.swap(d.fields, i, i - 1)}
+          />
+          <Button
+            className="Button Button--icon"
+            icon="fas fa-arrow-down"
+            disabled={i === d.fields.length - 1}
+            aria-label={extractText(t('move_down'))}
+            onclick={() => this.swap(d.fields, i, i + 1)}
+          />
+          <Button
+            className="Button Button--icon"
+            icon="far fa-trash-alt"
+            aria-label={extractText(t('remove_field'))}
+            onclick={() => d.fields.splice(i, 1)}
+          />
+        </div>
+        {this.fieldExtras(field)}
+      </li>
+    );
+  }
+
+  /** A choice's options, a number's unit, and where the field shows. */
+  fieldExtras(field: DraftField) {
+    const flag = (key: 'card' | 'filter') => (
+      <label className="checkbox">
+        <input type="checkbox" checked={!!field[key]} onchange={(e: Event) => (field[key] = (e.target as HTMLInputElement).checked)} />
+        {t(key)}
+      </label>
+    );
+
+    return [
+      field.type === 'select' ? (
+        <label className="GarageFields-extra">
+          {t('options')}
+          <textarea
+            className="FormControl"
+            rows="3"
+            value={field.optionsText || ''}
+            oninput={(e: InputEvent) => (field.optionsText = (e.target as HTMLTextAreaElement).value)}
+          />
+          <span className="helpText">{t('options_help')}</span>
+        </label>
+      ) : null,
+      field.type === 'number' ? (
+        <label className="GarageFields-extra GarageFields-unit">
+          {t('unit')}
+          {this.input(field.unit || '', (v) => (field.unit = v), { maxlength: 12, placeholder: 'hp, kg, mm…' })}
+        </label>
+      ) : null,
+      <div className="GarageFields-flags">
+        {field.type !== 'link' ? flag('card') : null}
+        {field.type === 'select' ? flag('filter') : null}
+      </div>,
+    ];
   }
 
   swap<T>(list: T[], a: number, b: number) {

@@ -88,50 +88,12 @@ export default class BuildEditModal extends FormModal<BuildEditModalAttrs> {
   }
 
   content() {
-    const stages: Record<string, string> = {};
-    STAGES.forEach((stage) => (stages[stage] = extractText(t(`stage.${stage}`))));
-    const categories: Record<string, string> = {};
-    this.categories.forEach((c) => (categories[c.id()!] = c.name()));
     const fields = this.category()?.fields() || [];
 
     return (
       <div className="Modal-body">
         <div className="Form GarageEdit">
-          <div className="GarageEdit-row">
-            {this.categories.length > 1 ? (
-              <div className="Form-group">
-                <label for="garage-category">{t('edit.category')}</label>
-                <Select id="garage-category" options={categories} value={this.categoryId()} onchange={this.categoryId} />
-              </div>
-            ) : null}
-            <div className="Form-group">
-              <label for="garage-stage">{t('edit.stage')}</label>
-              <Select id="garage-stage" options={stages} value={this.stage()} onchange={this.stage} />
-            </div>
-          </div>
-          <div className="Form-group">
-            <label for="garage-title">{t('edit.title')}</label>
-            <input
-              id="garage-title"
-              name="title"
-              className="FormControl"
-              maxlength="120"
-              required
-              bidi={this.name}
-              placeholder={extractText(t('edit.title_placeholder'))}
-            />
-          </div>
-          <div className="Form-group">
-            <label for="garage-tagline">{t('edit.tagline')}</label>
-            <input
-              id="garage-tagline"
-              name="tagline"
-              className="FormControl"
-              maxlength="160"
-              bidi={this.tagline}
-              placeholder={extractText(t('edit.tagline_placeholder'))}
-            />
-          </div>
+          {this.basics()}
 
           {fields.length ? (
             <fieldset className="GarageEdit-specs">
@@ -173,6 +135,52 @@ export default class BuildEditModal extends FormModal<BuildEditModalAttrs> {
         </div>
       </div>
     );
+  }
+
+  /** What the build is: its category, stage, name and tagline. */
+  basics(): Mithril.Children {
+    const stages: Record<string, string> = {};
+    STAGES.forEach((stage) => (stages[stage] = extractText(t(`stage.${stage}`))));
+    const categories: Record<string, string> = {};
+    this.categories.forEach((c) => (categories[c.id()!] = c.name()));
+
+    return [
+      <div className="GarageEdit-row">
+        {this.categories.length > 1 ? (
+          <div className="Form-group">
+            <label for="garage-category">{t('edit.category')}</label>
+            <Select id="garage-category" options={categories} value={this.categoryId()} onchange={this.categoryId} />
+          </div>
+        ) : null}
+        <div className="Form-group">
+          <label for="garage-stage">{t('edit.stage')}</label>
+          <Select id="garage-stage" options={stages} value={this.stage()} onchange={this.stage} />
+        </div>
+      </div>,
+      <div className="Form-group">
+        <label for="garage-title">{t('edit.title')}</label>
+        <input
+          id="garage-title"
+          name="title"
+          className="FormControl"
+          maxlength="120"
+          required
+          bidi={this.name}
+          placeholder={extractText(t('edit.title_placeholder'))}
+        />
+      </div>,
+      <div className="Form-group">
+        <label for="garage-tagline">{t('edit.tagline')}</label>
+        <input
+          id="garage-tagline"
+          name="tagline"
+          className="FormControl"
+          maxlength="160"
+          bidi={this.tagline}
+          placeholder={extractText(t('edit.tagline_placeholder'))}
+        />
+      </div>,
+    ];
   }
 
   specField(field: GarageField) {
