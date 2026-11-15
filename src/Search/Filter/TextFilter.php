@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * `filter[text]=turbo`: builds whose title or tagline holds the words, in any case. Each
- * word must match; LIKE wildcards in what was typed are matched literally.
+ * word must match; LIKE wildcards in what was typed are matched literally. A substring
+ * search, so no index can serve it: it is bounded instead (six words of 100 characters,
+ * on two short columns of one row per build, after the category and stage filters).
  *
  * @implements FilterInterface<DatabaseSearchState>
  */

@@ -32,6 +32,11 @@ class GarageData extends Type
         return self::staticTranslator()->trans('ernestdefoe-garage.lib.gdpr.delete');
     }
 
+    /*
+     * flarum/gdpr builds its data types with `new` and a fixed argument list
+     * (Exporter, ErasureJob), so nothing can be injected here: the services
+     * come from the container when the export or erasure runs.
+     */
     public function export(): ?array
     {
         $photos = resolve(Photos::class);

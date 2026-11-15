@@ -57,7 +57,10 @@
                 "flarum/gdpr",
                 "fof/upload",
                 "fof/signature",
-                "ernestdefoe/scribe"
+                "fof/photoswipe",
+                "ernestdefoe/scribe",
+                "flarum/markdown",
+                "fof/rich-text"
             ]
         }
     },
@@ -66,6 +69,13 @@
         "flarum/phpstan": "^2.0",
         "flarum/testing": "^2.0",
         "ernestdefoe/scribe": "*"
+    },
+    "suggest": {
+        "flarum/gdpr": "Members' builds, log updates and comments in their data export, and erased with them",
+        "fof/upload": "Photos stored through FoF Upload instead of Garage's own folder",
+        "fof/signature": "Members show one of their builds under their posts",
+        "fof/photoswipe": "Build photos open in the same viewer as post images",
+        "ernestdefoe/scribe": "Stories and log updates written in Scribe's editor"
     },
     "scripts": {
         "test": [

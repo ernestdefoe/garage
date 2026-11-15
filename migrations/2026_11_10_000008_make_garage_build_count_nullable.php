@@ -12,5 +12,9 @@ return [
         });
     },
     'down' => function (Builder $schema) {
+        $schema->getConnection()->table('users')->whereNull('garage_build_count')->update(['garage_build_count' => 0]);
+        $schema->table('users', function (Blueprint $table) {
+            $table->unsignedInteger('garage_build_count')->default(0)->nullable(false)->change();
+        });
     },
 ];

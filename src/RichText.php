@@ -24,8 +24,11 @@ class RichText
     /** A MySQL TEXT column. */
     private const MAX_BYTES = 65535;
 
-    public function __construct(private readonly ExtensionManager $extensions)
-    {
+    public function __construct(
+        private readonly ExtensionManager $extensions,
+        private readonly Formatter $formatter,
+        private readonly TranslatorInterface $translator,
+    ) {
     }
 
     /** Scribe's editor is on: it stands down while Markdown or FoF Rich Text is enabled. */
@@ -86,10 +89,10 @@ class RichText
             return null;
         }
 
-        $xml = $this->formatter()->parse($html, $context, $actor);
+        $xml = $this->formatter->parse($html, $context, $actor);
 
         if (strlen($xml) > self::MAX_BYTES) {
-            throw new ValidationException([$field => resolve(TranslatorInterface::class)->trans('ernestdefoe-garage.api.text_too_long')]);
+            throw new ValidationException([$field => $this->translator->trans('ernestdefoe-garage.api.text_too_long')]);
         }
 
         return $xml;
@@ -97,13 +100,13 @@ class RichText
 
     public function render(string $xml, mixed $context, ?ServerRequestInterface $request): string
     {
-        return $this->formatter()->render($xml, $context, $request);
+        return $this->formatter->render($xml, $context, $request);
     }
 
     /** The HTML it was written as, for Scribe to edit. */
     public function source(string $xml, mixed $context): string
     {
-        return (string) $this->formatter()->unparse($xml, $context);
+        return (string) $this->formatter->unparse($xml, $context);
     }
 
     /** Its words, paragraphs kept: for the plain editor, page descriptions and data exports. */
@@ -114,11 +117,5 @@ class RichText
         $text = html_entity_decode(strip_tags((string) $html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         return trim((string) preg_replace(["~[ \t]+\n~", "~\n{3,}~"], ["\n", "\n\n"], $text));
-    }
-
-    /** Resolved when used: resources are built on every API request. */
-    private function formatter(): Formatter
-    {
-        return resolve(Formatter::class);
     }
 }

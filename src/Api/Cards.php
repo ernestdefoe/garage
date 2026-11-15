@@ -25,7 +25,10 @@ class Cards
     // Static: post fields, user fields and resources each get their own instance, and must share one batch.
     private static WeakMap $byRequest;
 
-    public function __construct(private readonly Photos $photos)
+    public function __construct(
+        private readonly Photos $photos,
+        private readonly SlugManager $slugs,
+    )
     {
         self::$byRequest ??= new WeakMap();
     }
@@ -119,7 +122,7 @@ class Cards
             'likeCount' => $build->like_count,
             'entryCount' => $build->entry_count,
             'category' => $build->category ? ['name' => $build->category->name, 'color' => $build->category->color, 'icon' => $build->category->icon] : null,
-            'user' => $build->user ? ['displayName' => $build->user->display_name, 'slug' => resolve(SlugManager::class)->forResource(User::class)->toSlug($build->user), 'avatarUrl' => $build->user->avatar_url] : null,
+            'user' => $build->user ? ['displayName' => $build->user->display_name, 'slug' => $this->slugs->forResource(User::class)->toSlug($build->user), 'avatarUrl' => $build->user->avatar_url] : null,
         ];
     }
 }

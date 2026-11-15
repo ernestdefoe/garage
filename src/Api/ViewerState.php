@@ -3,7 +3,8 @@
 namespace ErnestDefoe\Garage\Api;
 
 use Flarum\Api\Context;
-use Illuminate\Database\ConnectionInterface;
+use ErnestDefoe\Garage\Follow;
+use ErnestDefoe\Garage\Like;
 use Psr\Http\Message\ServerRequestInterface;
 use WeakMap;
 
@@ -20,12 +21,12 @@ class ViewerState
     // Static: post fields, user fields and resources each get their own instance, and must share one batch.
     private static WeakMap $byRequest;
 
-    public function __construct(private readonly ConnectionInterface $db)
+    public function __construct()
     {
         self::$byRequest ??= new WeakMap();
     }
 
-    /** @param 'garage_likes'|'garage_follows' $table */
+    /** @param class-string<Like|Follow> $table */
     public function deferred(Context $context, string $table, int $buildId): \Closure|bool
     {
         $actor = $context->getActor();
@@ -62,7 +63,7 @@ class ViewerState
         $ids = array_keys($state[$table]['queued']);
 
         if ($ids) {
-            $found = $this->db->table($table)->where('user_id', $userId)->whereIn('build_id', $ids)->pluck('build_id')->flip();
+            $found = $table::query()->where('user_id', $userId)->whereIn('build_id', $ids)->pluck('build_id')->flip();
             foreach ($ids as $id) {
                 $state[$table]['rows'][$id] = isset($found[$id]);
             }

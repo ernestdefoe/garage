@@ -20,6 +20,12 @@ return [
             ]);
         }
     },
+    // The seeded category goes only while nothing has been filed under it.
     'down' => function (Builder $schema) {
+        $db = $schema->getConnection();
+        $id = $db->table('garage_categories')->where('slug', 'builds')->value('id');
+        if ($id && ! $db->table('garage_builds')->where('category_id', $id)->exists()) {
+            $db->table('garage_categories')->where('id', $id)->delete();
+        }
     },
 ];

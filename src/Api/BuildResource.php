@@ -7,6 +7,8 @@ use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Category;
 use ErnestDefoe\Garage\Counts;
 use ErnestDefoe\Garage\Entry;
+use ErnestDefoe\Garage\Follow;
+use ErnestDefoe\Garage\Like;
 use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Settings;
 use ErnestDefoe\Garage\Storage\Photos;
@@ -18,7 +20,6 @@ use Flarum\Api\Sort\SortColumn;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\User\User;
-use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Tobyz\JsonApiServer\Context as OriginalContext;
@@ -41,8 +42,9 @@ class BuildResource extends AbstractDatabaseResource
         private readonly Photos $photos,
         private readonly ViewerState $viewer,
         private readonly TranslatorInterface $translator,
-        private readonly ConnectionInterface $db,
         private readonly RichText $richText,
+        private readonly Counts $counts,
+        private readonly RateLimit $rateLimit,
     ) {
     }
 
@@ -170,8 +172,7 @@ class BuildResource extends AbstractDatabaseResource
         if (array_key_exists($key = spl_object_id($model), $this->recount)) {
             $previous = $this->recount[$key];
             unset($this->recount[$key]);
-            // Resolved here, not injected: the constructor runs on every API request, this only on a save.
-            resolve(Counts::class)->refresh($model->user_id, array_filter([$model->category_id, $previous]));
+            $this->counts->refresh($model->user_id, array_filter([$model->category_id, $previous]));
         }
 
         return $model;
@@ -180,13 +181,13 @@ class BuildResource extends AbstractDatabaseResource
     public function deleting(object $model, OriginalContext $context): void
     {
         /** @var Build $model */
-        resolve(Counts::class)->forget($model);
+        $this->counts->forget($model);
     }
 
     public function deleted(object $model, OriginalContext $context): void
     {
         /** @var Build $model */
-        resolve(Counts::class)->refresh($model->user_id, [$model->category_id]);
+        $this->counts->refresh($model->user_id, [$model->category_id]);
     }
 
     public function fields(): array
@@ -248,13 +249,13 @@ class BuildResource extends AbstractDatabaseResource
             Schema\DateTime::make('createdAt')->property('created_at'),
 
             Schema\Boolean::make('liked')
-                ->get(fn (Build $b, Context $context) => $this->viewer->deferred($context, 'garage_likes', $b->id))
+                ->get(fn (Build $b, Context $context) => $this->viewer->deferred($context, Like::class, $b->id))
                 ->writable(fn (Build $b, Context $context) => $b->exists && $context->getActor()->can('like', $b))
-                ->set(fn (Build $b, $value, Context $context) => $this->toggle($b, $context, 'garage_likes', 'like_count', (bool) $value)),
+                ->set(fn (Build $b, $value, Context $context) => $this->toggle($b, $context, Like::class, 'like_count', (bool) $value)),
             Schema\Boolean::make('followed')
-                ->get(fn (Build $b, Context $context) => $this->viewer->deferred($context, 'garage_follows', $b->id))
+                ->get(fn (Build $b, Context $context) => $this->viewer->deferred($context, Follow::class, $b->id))
                 ->writable(fn (Build $b, Context $context) => $b->exists && $context->getActor()->can('follow', $b))
-                ->set(fn (Build $b, $value, Context $context) => $this->toggle($b, $context, 'garage_follows', 'follower_count', (bool) $value)),
+                ->set(fn (Build $b, $value, Context $context) => $this->toggle($b, $context, Follow::class, 'follower_count', (bool) $value)),
             // The owner's choice of the build shown under their posts (FoF Signature). Only its owner sees or sets it.
             Schema\Boolean::make('inSignature')
                 ->visible(fn (Build $b, Context $context) => $b->isOwnedBy($context->getActor()))
@@ -303,18 +304,18 @@ class BuildResource extends AbstractDatabaseResource
     }
 
     /** A like or a follow: the row, and the build's count worked out again (without touching updated_at). */
+    /** @param class-string<Like|Follow> $table */
     private function toggle(Build $build, Context $context, string $table, string $column, bool $on): void
     {
         $actor = $context->getActor();
-        $rows = $this->db->table($table)->where('build_id', $build->id)->where('user_id', $actor->id);
 
         if ($on) {
-            $this->db->table($table)->insertOrIgnore(['build_id' => $build->id, 'user_id' => $actor->id, 'created_at' => Carbon::now()]);
+            $table::query()->insertOrIgnore(['build_id' => $build->id, 'user_id' => $actor->id, 'created_at' => Carbon::now()]);
         } else {
-            $rows->delete();
+            $table::query()->where('build_id', $build->id)->where('user_id', $actor->id)->delete();
         }
 
-        $count = $this->db->table($table)->where('build_id', $build->id)->count();
+        $count = $table::query()->where('build_id', $build->id)->count();
         Build::query()->whereKey($build->id)->update([$column => $count]);
         $build->setAttribute($column, $count)->syncOriginalAttribute($column);
         $this->viewer->set($context, $table, $build->id, $on);

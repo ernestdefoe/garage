@@ -12,14 +12,17 @@ use Illuminate\Contracts\Cache\Repository;
  */
 final class RateLimit
 {
-    public static function spend(string $key, int $perMinute, int $perDay): bool
+    public function __construct(private readonly Repository $cache)
     {
-        $cache = resolve(Repository::class);
+    }
+
+    public function spend(string $key, int $perMinute, int $perDay): bool
+    {
         $now = time();
         $day = (int) date('Ymd', $now);
         $minute = intdiv($now, 60);
 
-        $state = $cache->get($key);
+        $state = $this->cache->get($key);
         $state = is_array($state) ? $state : [];
         $dayCount = ($state['day'] ?? 0) === $day ? (int) ($state['d'] ?? 0) : 0;
         $minuteCount = ($state['minute'] ?? 0) === $minute ? (int) ($state['m'] ?? 0) : 0;
@@ -28,7 +31,7 @@ final class RateLimit
             return false;
         }
 
-        $cache->put($key, ['day' => $day, 'd' => $dayCount + 1, 'minute' => $minute, 'm' => $minuteCount + 1], 86400);
+        $this->cache->put($key, ['day' => $day, 'd' => $dayCount + 1, 'minute' => $minute, 'm' => $minuteCount + 1], 86400);
 
         return true;
     }

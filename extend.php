@@ -23,15 +23,10 @@ use ErnestDefoe\Garage\Http\GaragePageContent;
 use ErnestDefoe\Garage\Listener\ForgetDeletedUser;
 use ErnestDefoe\Garage\Notification\CommentBlueprint;
 use ErnestDefoe\Garage\Notification\NewEntryBlueprint;
-use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Search;
-use ErnestDefoe\Garage\Settings;
-use ErnestDefoe\Garage\Storage\Photos;
-use Flarum\Api\Context;
 use Flarum\Api\Resource\ForumResource;
 use Flarum\Api\Resource\PostResource;
 use Flarum\Api\Resource\UserResource;
-use Flarum\Api\Schema;
 use Flarum\Extend;
 use Flarum\Foundation\Paths;
 use Flarum\Gdpr\Extend\UserData;
@@ -77,24 +72,8 @@ return [
     (new Extend\ApiResource(PostResource::class))
         ->fields(Api\PostFields::class),
 
-    // The viewer's own permissions: already loaded, so no query.
     (new Extend\ApiResource(ForumResource::class))
-        ->fields(fn () => [
-            Schema\Boolean::make('garageCanView')
-                ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission(Settings::VIEW)),
-            Schema\Boolean::make('garageCanCreate')
-                ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission(Settings::CREATE)),
-            Schema\Boolean::make('garageCanModerate')
-                ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission(Settings::MODERATE)),
-            // Where this member's photos go: FoF Upload, or Garage's own storage.
-            Schema\Str::make('garageUploads')
-                ->visible(fn ($forum, Context $context) => $context->getActor()->hasPermission(Settings::CREATE))
-                ->get(fn ($forum, Context $context) => resolve(Photos::class)->viaFof($context->getActor()) ? 'fof' : 'own'),
-            // Stories and updates are written in Scribe's editor when it is on.
-            Schema\Boolean::make('garageRichText')
-                ->visible(fn ($forum, Context $context) => $context->getActor()->hasPermission(Settings::CREATE))
-                ->get(fn () => resolve(RichText::class)->editor()),
-        ]),
+        ->fields(Api\ForumFields::class),
 
     // String literals, not Settings constants: this runs while Flarum boots, and a
     // class this extension autoloads here fatals every request mid-deploy.
@@ -147,5 +126,9 @@ return [
     (new Extend\Conditional())
         ->whenExtensionEnabled('flarum-gdpr', fn () => [
             (new UserData())->addType(GarageData::class),
+        ])
+        ->whenExtensionEnabled('fof-signature', fn () => [
+            (new Extend\ApiResource(UserResource::class))
+                ->fields(Api\SignatureFields::class),
         ]),
 ];

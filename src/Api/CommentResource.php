@@ -29,8 +29,11 @@ use Tobyz\JsonApiServer\Context as OriginalContext;
  */
 class CommentResource extends AbstractDatabaseResource
 {
-    public function __construct(private readonly TranslatorInterface $translator)
-    {
+    public function __construct(
+        private readonly TranslatorInterface $translator,
+        private readonly RateLimit $rateLimit,
+        private readonly NotificationSyncer $notifications,
+    ) {
     }
 
     public function type(): string
@@ -77,7 +80,7 @@ class CommentResource extends AbstractDatabaseResource
         $actor->assertCan('comment', $model->build);
 
         // A conversation, not a flood: 5 a minute, 200 a day.
-        if (! $actor->isAdmin() && ! RateLimit::spend("garage.comments.$actor->id", 5, 200)) {
+        if (! $actor->isAdmin() && ! $this->rateLimit->spend("garage.comments.$actor->id", 5, 200)) {
             throw new ValidationException(['body' => $this->translator->trans('ernestdefoe-garage.api.too_many_comments')]);
         }
 
@@ -108,7 +111,7 @@ class CommentResource extends AbstractDatabaseResource
 
         $build = $model->build;
         if ($build && $build->user_id !== $model->user_id && $build->user) {
-            resolve(NotificationSyncer::class)->sync(new CommentBlueprint($model, $context->getActor()), [$build->user]);
+            $this->notifications->sync(new CommentBlueprint($model, $context->getActor()), [$build->user]);
         }
 
         return $model;

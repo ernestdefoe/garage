@@ -3,7 +3,6 @@
 namespace ErnestDefoe\Garage;
 
 use Flarum\User\User;
-use Illuminate\Database\ConnectionInterface;
 
 /**
  * Everything Garage keeps for a member, removed: their builds (photos, log
@@ -17,10 +16,8 @@ use Illuminate\Database\ConnectionInterface;
  */
 class Erasure
 {
-    public function __construct(
-        private readonly Counts $counts,
-        private readonly ConnectionInterface $db,
-    ) {
+    public function __construct(private readonly Counts $counts)
+    {
     }
 
     public function forget(User $user): void
@@ -30,8 +27,8 @@ class Erasure
         // Other members' builds and entries whose counts this member is part of.
         $builds = array_unique([
             ...Comment::query()->where('user_id', $id)->pluck('build_id')->all(),
-            ...$this->db->table('garage_likes')->where('user_id', $id)->pluck('build_id')->all(),
-            ...$this->db->table('garage_follows')->where('user_id', $id)->pluck('build_id')->all(),
+            ...Like::query()->where('user_id', $id)->pluck('build_id')->all(),
+            ...Follow::query()->where('user_id', $id)->pluck('build_id')->all(),
         ]);
         $entries = Comment::query()->where('user_id', $id)->whereNotNull('entry_id')->distinct()->pluck('entry_id')->all();
 
@@ -45,18 +42,21 @@ class Erasure
         });
 
         Comment::query()->where('user_id', $id)->delete();
-        $this->db->table('garage_likes')->where('user_id', $id)->delete();
-        $this->db->table('garage_follows')->where('user_id', $id)->delete();
+        Like::query()->where('user_id', $id)->delete();
+        Follow::query()->where('user_id', $id)->delete();
 
-        foreach (array_diff($builds, $gone) as $buildId) {
-            Build::query()->whereKey($buildId)->update([
-                'comment_count' => Comment::query()->where('build_id', $buildId)->count(),
-                'like_count' => $this->db->table('garage_likes')->where('build_id', $buildId)->count(),
-                'follower_count' => $this->db->table('garage_follows')->where('build_id', $buildId)->count(),
+        // What is left, worked out again in one statement per table: each count is a subquery.
+        if ($builds = array_values(array_diff($builds, $gone))) {
+            Build::query()->whereIn('id', $builds)->update([
+                'comment_count' => Comment::query()->selectRaw('count(*)')->whereColumn('garage_comments.build_id', 'garage_builds.id'),
+                'like_count' => Like::query()->selectRaw('count(*)')->whereColumn('garage_likes.build_id', 'garage_builds.id'),
+                'follower_count' => Follow::query()->selectRaw('count(*)')->whereColumn('garage_follows.build_id', 'garage_builds.id'),
             ]);
         }
-        foreach ($entries as $entryId) {
-            Entry::query()->whereKey($entryId)->update(['comment_count' => Comment::query()->where('entry_id', $entryId)->count()]);
+        if ($entries) {
+            Entry::query()->whereIn('id', $entries)->update([
+                'comment_count' => Comment::query()->selectRaw('count(*)')->whereColumn('garage_comments.entry_id', 'garage_entries.id'),
+            ]);
         }
 
         $this->counts->categories($categories);

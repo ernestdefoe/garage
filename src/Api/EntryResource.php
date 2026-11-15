@@ -37,8 +37,9 @@ class EntryResource extends AbstractDatabaseResource
         private readonly Photos $photos,
         private readonly TranslatorInterface $translator,
         private readonly RichText $richText,
-    )
-    {
+        private readonly RateLimit $rateLimit,
+        private readonly Queue $queue,
+    ) {
     }
 
     public function type(): string
@@ -102,7 +103,7 @@ class EntryResource extends AbstractDatabaseResource
         $actor->assertCan('update', $build);
 
         // Each new entry notifies the build's followers: 10 a minute and 60 a day.
-        if (! $actor->isAdmin() && ! RateLimit::spend("garage.entries.$actor->id", 10, 60)) {
+        if (! $actor->isAdmin() && ! $this->rateLimit->spend("garage.entries.$actor->id", 10, 60)) {
             throw new ValidationException(['title' => $this->translator->trans('ernestdefoe-garage.api.too_many_updates')]);
         }
 
@@ -129,7 +130,7 @@ class EntryResource extends AbstractDatabaseResource
             $build = $this->bumpBuild($model, $fresh);
 
             if ($fresh && $build->published_at) {
-                $this->queue()->push(new NotifyFollowers($model->id));
+                $this->queue->push(new NotifyFollowers($model->id));
             }
         }
 
@@ -160,11 +161,6 @@ class EntryResource extends AbstractDatabaseResource
     }
 
     /** Resolved when used, not injected: the constructor runs on every API request. */
-    private function queue(): Queue
-    {
-        return resolve(Queue::class);
-    }
-
     /** The build's log counts and latest entry, and (for news) its place in "Recently updated". */
     private function bumpBuild(Entry $entry, bool $news = true): Build
     {

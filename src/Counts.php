@@ -30,9 +30,12 @@ class Counts
     /** @param array<int|null> $categoryIds */
     public function categories(array $categoryIds): void
     {
-        foreach (array_unique(array_filter($categoryIds)) as $categoryId) {
-            Category::query()->whereKey($categoryId)->update([
-                'build_count' => Build::query()->where('category_id', $categoryId)->whereNotNull('published_at')->count(),
+        $categoryIds = array_values(array_unique(array_filter($categoryIds)));
+
+        // One statement for all of them, each count a subquery.
+        if ($categoryIds) {
+            Category::query()->whereIn('id', $categoryIds)->update([
+                'build_count' => Build::query()->selectRaw('count(*)')->whereColumn('garage_builds.category_id', 'garage_categories.id')->whereNotNull('published_at'),
             ]);
         }
     }
@@ -56,8 +59,8 @@ class Counts
         $build->afterDelete(function () use ($build) {
             Comment::query()->where('build_id', $build->id)->delete();
             Entry::query()->where('build_id', $build->id)->delete();
-            $build->getConnection()->table('garage_likes')->where('build_id', $build->id)->delete();
-            $build->getConnection()->table('garage_follows')->where('build_id', $build->id)->delete();
+            Like::query()->where('build_id', $build->id)->delete();
+            Follow::query()->where('build_id', $build->id)->delete();
             Notification::query()->whereIn('type', ['garageNewEntry', 'garageComment'])->where('subject_id', $build->id)->delete();
         });
     }

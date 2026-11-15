@@ -24,8 +24,10 @@ use Tobyz\JsonApiServer\Context as OriginalContext;
  */
 class CategoryResource extends AbstractDatabaseResource
 {
-    public function __construct(private readonly TranslatorInterface $translator)
-    {
+    public function __construct(
+        private readonly TranslatorInterface $translator,
+        private readonly Counts $counts,
+    ) {
     }
 
     public function type(): string
@@ -104,7 +106,7 @@ class CategoryResource extends AbstractDatabaseResource
             $build->timestamps = false;
             $build->save();
         });
-        resolve(Counts::class)->categories([$to->id]);
+        $this->counts->categories([$to->id]);
     }
 
     public function fields(): array

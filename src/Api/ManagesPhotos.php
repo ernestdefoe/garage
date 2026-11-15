@@ -4,11 +4,9 @@ namespace ErnestDefoe\Garage\Api;
 
 use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Entry;
-use ErnestDefoe\Garage\Storage\Photos;
 use Flarum\Api\Context;
 use Flarum\Api\Endpoint;
 use Flarum\Foundation\ValidationException;
-use Flarum\Locale\TranslatorInterface;
 use Illuminate\Support\Arr;
 
 /**
@@ -52,19 +50,17 @@ trait ManagesPhotos
         /** @var Build|Entry $model */
         $model = $context->model;
         $actor = $context->getActor();
-        $translator = resolve(TranslatorInterface::class);
 
         // Each photo is decoded and encoded twice: members get 20 a minute and 300 a day.
-        if (! $actor->isAdmin() && ! RateLimit::spend("garage.photos.$actor->id", 20, 300)) {
-            throw new ValidationException(['photo' => $translator->trans('ernestdefoe-garage.api.too_many_uploads')]);
+        if (! $actor->isAdmin() && ! $this->rateLimit->spend("garage.photos.$actor->id", 20, 300)) {
+            throw new ValidationException(['photo' => $this->translator->trans('ernestdefoe-garage.api.too_many_uploads')]);
         }
 
         if (count($model->photos ?? []) >= $this->maxPhotos()) {
-            throw new ValidationException(['photo' => $translator->trans('ernestdefoe-garage.api.too_many_photos', ['count' => $this->maxPhotos()])]);
+            throw new ValidationException(['photo' => $this->translator->trans('ernestdefoe-garage.api.too_many_photos', ['count' => $this->maxPhotos()])]);
         }
 
-        // Resolved here, not injected: the constructor runs on every API request.
-        $photo = resolve(Photos::class)->fromRequest(
+        $photo = $this->photos->fromRequest(
             Arr::get($context->request->getUploadedFiles(), 'photo'),
             $context->body()['fofUuid'] ?? null,
             $actor,
@@ -80,7 +76,7 @@ trait ManagesPhotos
 
     private function removePhoto(Build|Entry $model, string $url): Build|Entry
     {
-        $storage = resolve(Photos::class);
+        $storage = $this->photos;
         $photos = $model->photos ?? [];
 
         foreach ($photos as $index => $photo) {

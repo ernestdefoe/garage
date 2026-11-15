@@ -44,6 +44,8 @@ class Photos
         private readonly SettingsRepositoryInterface $settings,
         private readonly ExtensionManager $extensions,
         private readonly TranslatorInterface $translator,
+        private readonly ImageManager $images,
+        private readonly PhotoValidator $validator,
     ) {
     }
 
@@ -71,7 +73,7 @@ class Photos
             throw new ValidationException(['photo' => $this->translator->trans('validation.required', ['attribute' => 'photo'])]);
         }
 
-        resolve(PhotoValidator::class)->assertImageValid('photo', $file);
+        $this->validator->assertImageValid('photo', $file);
 
         return $this->store((string) $file->getStream()->getMetadata('uri'), $folder);
     }
@@ -84,7 +86,7 @@ class Photos
     public function store(string $source, string $folder): array
     {
         // Scaled to full size first, so the small copy is made from that, not from the original.
-        $image = resolve(ImageManager::class)->read($source)->scaleDown(width: self::FULL, height: self::MAX_HEIGHT);
+        $image = $this->images->read($source)->scaleDown(width: self::FULL, height: self::MAX_HEIGHT);
         $name = $folder.'/'.Str::random(24).'.webp';
         $size = [$image->width(), $image->height()];
         $written = [];
