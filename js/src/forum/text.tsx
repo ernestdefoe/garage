@@ -1,3 +1,5 @@
+import type Mithril from 'mithril';
+
 /**
  * A member's text as it is shown. Written in Scribe, it is the HTML Flarum's
  * formatter rendered on the server through its allow-list, exactly as a post's
@@ -9,7 +11,7 @@
  */
 export const LINK = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])/g;
 
-function line(text) {
+function line(text: string) {
   return text.split(LINK).map((part, i) =>
     i % 2 ? (
       <a href={part} target="_blank" rel="ugc noopener nofollow">
@@ -21,7 +23,7 @@ function line(text) {
   );
 }
 
-export default function richText(text, html) {
+export default function richText(text: string | null | undefined, html?: string | null): Mithril.Children {
   if (html) return <div className="Post-body">{m.trust(html)}</div>;
   if (!text) return null;
   return text

@@ -6,10 +6,13 @@ import Comments from './Comments';
 import { PhotoGrid } from './Lightbox';
 import { openEntryEditor } from './openers';
 import richText from '../text';
+import type Mithril from 'mithril';
+import type { GarageBuild, GarageEntry } from '../../common/models';
+import type { LogState } from '../types';
 import { t, money } from '../util';
 
 /** "Mar 4, 2026", from the entry's date (a day, no time zone). */
-function day(date) {
+function day(date: string | null) {
   const [y, mo, d] = String(date).slice(0, 10).split('-').map(Number);
   return new Date(y, mo - 1, d);
 }
@@ -18,20 +21,28 @@ function day(date) {
  * The build log: newest first, as a timeline. Each entry has its photos, its
  * cost and its own comments (folded until opened).
  */
+interface BuildLogAttrs {
+  build: GarageBuild;
+  state: LogState;
+}
+
 export default class BuildLog {
+  loading!: boolean;
+  open!: Set<string>;
+
   oninit() {
     this.open = new Set();
     const wanted = m.route.param('entry');
     if (wanted) this.open.add(String(wanted));
   }
 
-  oncreate(vnode) {
+  oncreate(vnode: Mithril.VnodeDOM<BuildLogAttrs, this>) {
     const wanted = m.route.param('entry');
     const node = wanted && vnode.dom.querySelector(`[data-entry="${CSS.escape(wanted)}"]`);
     if (node) setTimeout(() => node.scrollIntoView({ block: 'start', behavior: 'smooth' }), 300);
   }
 
-  view(vnode) {
+  view(vnode: Mithril.Vnode<BuildLogAttrs, this>) {
     const { build, state } = vnode.attrs;
     const entries = state.entries;
 
@@ -63,9 +74,10 @@ export default class BuildLog {
     );
   }
 
-  entry(entry, build, state) {
+  entry(entry: GarageEntry, build: GarageBuild, state: LogState) {
     const date = day(entry.happenedOn());
-    const open = this.open.has(entry.id());
+    const id = entry.id()!; // a saved entry always has an id
+    const open = this.open.has(id);
     const count = entry.commentCount() || 0;
 
     return (
@@ -95,7 +107,7 @@ export default class BuildLog {
                 className="Button Button--link"
                 icon="far fa-comment"
                 aria-expanded={open ? 'true' : 'false'}
-                onclick={() => (open ? this.open.delete(entry.id()) : this.open.add(entry.id()))}
+                onclick={() => (open ? this.open.delete(id) : this.open.add(id))}
               >
                 {count ? t('entry.comments', { count }) : t('entry.reply')}
               </Button>
@@ -117,10 +129,10 @@ export default class BuildLog {
     );
   }
 
-  loadMore(build, state) {
+  loadMore(build: GarageBuild, state: LogState) {
     this.loading = true;
     app.store
-      .find('garage-entries', { filter: { build: build.id() }, page: { offset: state.entries.length, limit: 20, total: 0 } })
+      .find<GarageEntry[]>('garage-entries', { filter: { build: build.id() }, page: { offset: state.entries.length, limit: 20, total: 0 } })
       .then((more) => {
         state.entries = [...state.entries, ...more];
         state.moreEntries = !!more.payload?.links?.next;
@@ -131,12 +143,12 @@ export default class BuildLog {
       });
   }
 
-  remove(entry, build, state) {
+  remove(entry: GarageEntry, build: GarageBuild, state: LogState) {
     if (!confirm(extractText(t('entry.delete_confirm', { title: entry.title() })))) return;
     entry.delete().then(() => {
       state.entries = state.entries.filter((e) => e !== entry);
       // The build's counts, latest entry and spend were worked out again on the server.
-      app.store.find('garage-builds', build.id());
+      app.store.find<GarageBuild>('garage-builds', build.id()!);
       m.redraw();
     });
   }

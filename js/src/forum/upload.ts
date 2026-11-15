@@ -1,4 +1,5 @@
 import app from 'flarum/forum/app';
+import type { ApiPayloadSingle } from 'flarum/common/Store';
 
 /**
  * Sends one photo to a build or a log entry (`url` is its photos endpoint).
@@ -7,14 +8,19 @@ import app from 'flarum/forum/app';
  * photos are shrunk in the browser first, so they fit the size limit and
  * upload quickly.
  */
-export default async function uploadPhoto(file, url) {
+export default async function uploadPhoto(file: File, url: string) {
   const photo = await shrink(file);
-  let body = new FormData();
+  let body: FormData | { fofUuid: string } = new FormData();
 
   if (app.forum.attribute('garageUploads') === 'fof') {
     const upload = new FormData();
     upload.append('files[]', photo, photo.name);
-    const response = await app.request({ method: 'POST', url: app.forum.attribute('apiUrl') + '/fof/upload', serialize: (raw) => raw, body: upload });
+    const response = await app.request<{ data?: { attributes?: { uuid?: string } }[] }>({
+      method: 'POST',
+      url: app.forum.attribute('apiUrl') + '/fof/upload',
+      serialize: (raw: FormData) => raw,
+      body: upload,
+    });
     const uuid = (response.data || [])[0]?.attributes?.uuid;
     if (!uuid) throw new Error('upload');
     body = { fofUuid: uuid };
@@ -22,10 +28,10 @@ export default async function uploadPhoto(file, url) {
     body.append('photo', photo, photo.name);
   }
 
-  const payload = await app.request({
+  const payload = await app.request<ApiPayloadSingle>({
     method: 'POST',
     url,
-    serialize: body instanceof FormData ? (raw) => raw : undefined,
+    serialize: body instanceof FormData ? (raw: FormData) => raw : undefined,
     body,
   });
 
@@ -35,8 +41,8 @@ export default async function uploadPhoto(file, url) {
 const MAX_SIDE = 2560;
 
 /** A JPEG no bigger than MAX_SIDE, when the photo is larger than that or than half the size limit. */
-async function shrink(file) {
-  const limit = (app.forum.attribute('garageMaxUploadKb') || 10240) * 1024;
+async function shrink(file: File): Promise<File> {
+  const limit = (app.forum.attribute<number>('garageMaxUploadKb') || 10240) * 1024;
   if (!/^image\/(jpeg|png|webp)$/.test(file.type) || typeof createImageBitmap !== 'function') return file;
 
   try {
@@ -47,8 +53,8 @@ async function shrink(file) {
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
 
     return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
   } catch (e) {

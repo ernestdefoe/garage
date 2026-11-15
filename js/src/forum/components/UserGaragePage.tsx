@@ -6,26 +6,36 @@ import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import BuildCard from './BuildCard';
 import { openBuildEditor } from './openers';
 import useStyles from '../styles';
+import type Mithril from 'mithril';
+import type User from 'flarum/common/models/User';
+import type { IUserPageAttrs } from 'flarum/forum/components/UserPage';
+import type { GarageBuild } from '../../common/models';
 import { t, money } from '../util';
 
 /** Profile → Garage: the member's builds (their drafts too, on their own profile). */
 export default class UserGaragePage extends UserPage {
-  oninit(vnode) {
+  builds!: GarageBuild[] | null;
+  /** The member whose builds are loaded. */
+  shownFor!: string | undefined;
+
+  oninit(vnode: Mithril.Vnode<IUserPageAttrs, this>) {
     super.oninit(vnode);
     useStyles();
     this.builds = null;
     this.loadUser(m.route.param('username'));
   }
 
-  show(user) {
+  show(user: User) {
     super.show(user);
     if (this.shownFor === user.id()) return;
     this.shownFor = user.id();
 
-    app.store.find('garage-builds', { filter: { user: user.id() }, sort: '-lastActivityAt', page: { limit: 48, total: 0 } }).then((builds) => {
-      this.builds = builds;
-      m.redraw();
-    });
+    app.store
+      .find<GarageBuild[]>('garage-builds', { filter: { user: user.id() }, sort: '-lastActivityAt', page: { limit: 48, total: 0 } })
+      .then((builds) => {
+        this.builds = builds;
+        m.redraw();
+      });
   }
 
   content() {
@@ -34,7 +44,7 @@ export default class UserGaragePage extends UserPage {
     const own = app.session.user === this.user;
     const canAdd = own && app.forum.attribute('garageCanCreate');
     const published = this.builds.filter((b) => b.published());
-    const sum = (fn) => published.reduce((n, b) => n + (Number(fn(b)) || 0), 0);
+    const sum = (fn: (b: GarageBuild) => number | null) => published.reduce((n, b) => n + (Number(fn(b)) || 0), 0);
 
     return (
       <div className="GarageUserPage">
@@ -45,14 +55,14 @@ export default class UserGaragePage extends UserPage {
                 <strong>{published.length}</strong> {t('profile.builds', { count: published.length })}
               </li>
               <li>
-                <strong>{sum((b) => b.entryCount())}</strong> {t('profile.updates', { count: sum((b) => b.entryCount()) })}
+                <strong>{sum((b: GarageBuild) => b.entryCount())}</strong> {t('profile.updates', { count: sum((b: GarageBuild) => b.entryCount()) })}
               </li>
               <li>
-                <strong>{sum((b) => b.likeCount())}</strong> {t('profile.likes', { count: sum((b) => b.likeCount()) })}
+                <strong>{sum((b: GarageBuild) => b.likeCount())}</strong> {t('profile.likes', { count: sum((b: GarageBuild) => b.likeCount()) })}
               </li>
-              {sum((b) => b.spent()) ? (
+              {sum((b: GarageBuild) => b.spent()) ? (
                 <li>
-                  <strong>{money(sum((b) => b.spent()))}</strong> {t('profile.spent')}
+                  <strong>{money(sum((b: GarageBuild) => b.spent()))}</strong> {t('profile.spent')}
                 </li>
               ) : null}
             </ul>
@@ -72,7 +82,7 @@ export default class UserGaragePage extends UserPage {
         ) : (
           <div className="GarageEmpty">
             <Icon name="fas fa-warehouse" />
-            <p>{own ? t('profile.empty_own') : t('profile.empty', { username: this.user.displayName() })}</p>
+            <p>{own ? t('profile.empty_own') : t('profile.empty', { username: this.user!.displayName() })}</p>
             {canAdd ? (
               <Button className="Button Button--primary" icon="fas fa-plus" onclick={() => openBuildEditor({})}>
                 {t('page.add')}

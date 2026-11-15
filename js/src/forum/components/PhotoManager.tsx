@@ -2,6 +2,9 @@ import app from 'flarum/forum/app';
 import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
 import extractText from 'flarum/common/utils/extractText';
+import type Mithril from 'mithril';
+import type { ApiPayloadSingle } from 'flarum/common/Store';
+import type { GarageBuild, GarageEntry, GaragePhoto } from '../../common/models';
 import uploadPhoto from '../upload';
 import { t } from '../util';
 
@@ -10,14 +13,23 @@ import { t } from '../util';
  * are reordered or removed at once; new ones wait in `queue` until the form
  * is saved, then go up one at a time (sendQueue). The first photo is the cover.
  */
+interface QueuedPhoto {
+  file: File;
+  preview: string;
+}
+
 export class PhotoQueue {
-  constructor(max) {
+  files: QueuedPhoto[];
+  max: number;
+
+  constructor(max: number) {
     this.max = max;
     this.files = [];
   }
 
-  add(fileList, saved) {
-    for (const file of fileList) {
+  add(fileList: ArrayLike<File>, saved: number) {
+    // FileList is not iterable in the DOM lib this project targets (no dom.iterable).
+    for (const file of Array.from(fileList)) {
       if (!/^image\//.test(file.type)) continue;
       if (saved + this.files.length >= this.max) break;
       this.files.push({ file, preview: URL.createObjectURL(file) });
@@ -25,14 +37,14 @@ export class PhotoQueue {
     m.redraw();
   }
 
-  remove(item) {
+  remove(item: QueuedPhoto) {
     URL.revokeObjectURL(item.preview);
     this.files = this.files.filter((f) => f !== item);
   }
 
   /** Uploads every queued photo to the build or entry at `url`; calls progress(n, total). Returns the names that failed. */
-  async send(url, progress) {
-    const failed = [];
+  async send(url: string, progress: (done: number, total: number) => void): Promise<string[]> {
+    const failed: string[] = [];
     const files = [...this.files];
     for (let i = 0; i < files.length; i++) {
       progress(i + 1, files.length);
@@ -47,14 +59,23 @@ export class PhotoQueue {
   }
 }
 
+interface PhotoManagerAttrs {
+  model?: GarageBuild | GarageEntry | null;
+  queue: PhotoQueue;
+  endpoint: string | null;
+  cover?: boolean;
+}
+
 export default class PhotoManager {
-  view(vnode) {
+  dragging!: boolean;
+
+  view(vnode: Mithril.Vnode<PhotoManagerAttrs, this>) {
     const { model, queue, endpoint, cover = true } = vnode.attrs;
     const saved = model?.photos?.() || [];
     const total = saved.length + queue.files.length;
     const full = total >= queue.max;
 
-    const tile = (src, i, actions) => (
+    const tile = (src: string, i: number, actions: Mithril.Children) => (
       <li className={'GaragePhotoManager-item' + (cover && i === 0 ? ' is-cover' : '')}>
         <img src={src} alt="" />
         {cover && i === 0 ? <span className="GaragePhotoManager-cover">{t('edit.cover')}</span> : null}
@@ -65,19 +86,19 @@ export default class PhotoManager {
     return (
       <div
         className={'GaragePhotoManager' + (this.dragging ? ' is-dragging' : '')}
-        ondragover={(e) => {
+        ondragover={(e: DragEvent) => {
           e.preventDefault();
           this.dragging = true;
         }}
         ondragleave={() => (this.dragging = false)}
-        ondrop={(e) => {
+        ondrop={(e: DragEvent) => {
           e.preventDefault();
           this.dragging = false;
-          queue.add(e.dataTransfer.files, saved.length);
+          queue.add(e.dataTransfer!.files, saved.length);
         }}
       >
         <ul className="GaragePhotoManager-list">
-          {saved.map((photo, i) =>
+          {saved.map((photo: GaragePhoto, i: number) =>
             tile(photo.small, i, [
               cover && i > 0 ? (
                 <Button
@@ -85,7 +106,7 @@ export default class PhotoManager {
                   icon="fas fa-star"
                   aria-label={extractText(t('edit.make_cover'))}
                   title={extractText(t('edit.make_cover'))}
-                  onclick={() => this.order(endpoint, model, i, 0)}
+                  onclick={() => this.order(endpoint!, model!, i, 0)}
                 />
               ) : null,
               i > 0 ? (
@@ -93,7 +114,7 @@ export default class PhotoManager {
                   className="Button Button--icon"
                   icon="fas fa-arrow-left"
                   aria-label={extractText(t('edit.move_left'))}
-                  onclick={() => this.order(endpoint, model, i, i - 1)}
+                  onclick={() => this.order(endpoint!, model!, i, i - 1)}
                 />
               ) : null,
               i < saved.length - 1 ? (
@@ -101,18 +122,18 @@ export default class PhotoManager {
                   className="Button Button--icon"
                   icon="fas fa-arrow-right"
                   aria-label={extractText(t('edit.move_right'))}
-                  onclick={() => this.order(endpoint, model, i, i + 1)}
+                  onclick={() => this.order(endpoint!, model!, i, i + 1)}
                 />
               ) : null,
               <Button
                 className="Button Button--icon"
                 icon="far fa-trash-alt"
                 aria-label={extractText(t('edit.remove_photo'))}
-                onclick={() => this.remove(endpoint, model, i)}
+                onclick={() => this.remove(endpoint!, model!, i)}
               />,
             ])
           )}
-          {queue.files.map((item, j) =>
+          {queue.files.map((item: QueuedPhoto, j: number) =>
             tile(item.preview, saved.length + j, [
               <span className="GaragePhotoManager-pending">{t('edit.pending')}</span>,
               <Button
@@ -132,9 +153,10 @@ export default class PhotoManager {
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   multiple
-                  onchange={(e) => {
-                    queue.add(e.target.files, saved.length);
-                    e.target.value = '';
+                  onchange={(e: Event) => {
+                    const input = e.target as HTMLInputElement;
+                    queue.add(input.files!, saved.length);
+                    input.value = '';
                   }}
                 />
               </label>
@@ -146,19 +168,19 @@ export default class PhotoManager {
     );
   }
 
-  order(endpoint, model, from, to) {
-    const order = model.photos().map((_, i) => i);
+  order(endpoint: string, model: GarageBuild | GarageEntry, from: number, to: number) {
+    const order = model.photos()!.map((_, i) => i);
     const [moved] = order.splice(from, 1);
     order.splice(to, 0, moved);
-    app.request({ method: 'POST', url: `${endpoint}/photos/order`, body: { order } }).then((payload) => {
+    app.request<ApiPayloadSingle>({ method: 'POST', url: `${endpoint}/photos/order`, body: { order } }).then((payload) => {
       app.store.pushPayload(payload);
       m.redraw();
     });
   }
 
-  remove(endpoint, model, index) {
+  remove(endpoint: string, model: GarageBuild | GarageEntry, index: number) {
     if (!confirm(extractText(t('edit.remove_photo_confirm')))) return;
-    app.request({ method: 'POST', url: `${endpoint}/photos/remove`, body: { url: model.photos()[index].url } }).then((payload) => {
+    app.request<ApiPayloadSingle>({ method: 'POST', url: `${endpoint}/photos/remove`, body: { url: model.photos()![index].url } }).then((payload) => {
       app.store.pushPayload(payload);
       m.redraw();
     });

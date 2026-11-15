@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
-import Page from 'flarum/common/components/Page';
+import type Mithril from 'mithril';
+import Page, { type IPageAttrs } from 'flarum/common/components/Page';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import Button from 'flarum/common/components/Button';
@@ -9,10 +10,19 @@ import Select from 'flarum/common/components/Select';
 import extractText from 'flarum/common/utils/extractText';
 import BuildCard from './BuildCard';
 import useStyles from '../styles';
+import type { GarageBuild, GarageCategory } from '../../common/models';
 import { t, STAGES, categoryColor } from '../util';
 import { openBuildEditor } from './openers';
 
-const SORTS = {
+interface Filters {
+  category: string;
+  sort: string;
+  stage: string;
+  text: string;
+  spec: string;
+}
+
+const SORTS: Record<string, string> = {
   recent: '-lastActivityAt',
   newest: '-publishedAt',
   liked: '-likeCount',
@@ -27,13 +37,24 @@ const SORTS = {
  * page is not rebuilt while someone types).
  */
 export default class GaragePage extends Page {
-  oninit(vnode) {
+  builds!: GarageBuild[];
+  categories!: GarageCategory[];
+  featured!: GarageBuild[];
+  filters!: Filters;
+  loading!: boolean;
+  loadingMore!: boolean;
+  more!: boolean;
+  /** The latest list request: an older one that answers late is dropped. */
+  ticket!: object;
+  typing!: ReturnType<typeof setTimeout>;
+
+  oninit(vnode: Mithril.Vnode<IPageAttrs, this>) {
     super.oninit(vnode);
     useStyles();
     app.setTitle(extractText(t('page.title')));
     app.setTitleCount(0);
 
-    const param = (key) => m.route.param(key) || '';
+    const param = (key: string): string => m.route.param(key) || '';
     this.filters = {
       category: param('category'),
       sort: SORTS[param('sort')] ? param('sort') : 'recent',
@@ -41,13 +62,13 @@ export default class GaragePage extends Page {
       text: param('q'),
       spec: param('spec'),
     };
-    this.categories = app.store.all('garage-categories');
+    this.categories = app.store.all<GarageCategory>('garage-categories');
     this.builds = [];
     this.featured = [];
     this.loading = true;
     this.more = false;
 
-    const categories = this.categories.length ? Promise.resolve(this.categories) : app.store.find('garage-categories');
+    const categories = this.categories.length ? Promise.resolve(this.categories) : app.store.find<GarageCategory[]>('garage-categories');
     categories.then((list) => {
       this.categories = [...list].sort((a, b) => a.position() - b.position());
       this.refresh();
@@ -55,7 +76,7 @@ export default class GaragePage extends Page {
 
     if (!this.filtered()) {
       app.store
-        .find('garage-builds', { filter: { featured: '1', published: '1' }, sort: '-featuredAt', page: { limit: 4, total: 0 } })
+        .find<GarageBuild[]>('garage-builds', { filter: { featured: '1', published: '1' }, sort: '-featuredAt', page: { limit: 4, total: 0 } })
         .then((builds) => {
           this.featured = builds;
           m.redraw();
@@ -74,9 +95,9 @@ export default class GaragePage extends Page {
 
   query(offset = 0) {
     const f = this.filters;
-    const filter = { published: '1' };
+    const filter: Record<string, string> = { published: '1' };
     const category = this.category();
-    if (category) filter.category = category.id();
+    if (category) filter.category = category.id()!;
     if (f.stage) filter.stage = f.stage;
     if (f.text.trim()) filter.text = f.text.trim();
     if (f.spec && category) filter.spec = f.spec;
@@ -90,7 +111,7 @@ export default class GaragePage extends Page {
     const ticket = (this.ticket = {});
     m.redraw();
 
-    return app.store.find('garage-builds', this.query()).then((builds) => {
+    return app.store.find<GarageBuild[]>('garage-builds', this.query()).then((builds) => {
       if (ticket !== this.ticket) return;
       this.builds = builds;
       this.more = !!builds.payload?.links?.next;
@@ -101,7 +122,7 @@ export default class GaragePage extends Page {
 
   loadMore() {
     this.loadingMore = true;
-    app.store.find('garage-builds', this.query(this.builds.length)).then((builds) => {
+    app.store.find<GarageBuild[]>('garage-builds', this.query(this.builds.length)).then((builds) => {
       this.builds = [...this.builds, ...builds];
       this.more = !!builds.payload?.links?.next;
       this.loadingMore = false;
@@ -110,7 +131,7 @@ export default class GaragePage extends Page {
   }
 
   /** Change a filter: the address follows, the grid reloads. */
-  set(changes) {
+  set(changes: Partial<Filters>) {
     Object.assign(this.filters, changes);
     if ('category' in changes) this.filters.spec = '';
     const f = this.filters;
@@ -173,7 +194,7 @@ export default class GaragePage extends Page {
 
   chips() {
     if (this.categories.length < 2) return null;
-    const chip = (category) => {
+    const chip = (category: GarageCategory | null) => {
       const active = (category?.slug() || '') === this.filters.category;
       return (
         <button
@@ -200,9 +221,9 @@ export default class GaragePage extends Page {
 
   toolbar() {
     const f = this.filters;
-    const sorts = {};
+    const sorts: Record<string, string> = {};
     Object.keys(SORTS).forEach((key) => (sorts[key] = extractText(t(`page.sort.${key}`))));
-    const stages = { '': extractText(t('page.stage_any')) };
+    const stages: Record<string, string> = { '': extractText(t('page.stage_any')) };
     STAGES.forEach((stage) => (stages[stage] = extractText(t(`stage.${stage}`))));
     const filterFields = (this.category()?.fields() || []).filter((field) => field.type === 'select' && field.filter && field.options?.length);
     const [specKey, specValue] = f.spec ? [f.spec.slice(0, f.spec.indexOf(':')), f.spec.slice(f.spec.indexOf(':') + 1)] : ['', ''];
@@ -217,20 +238,25 @@ export default class GaragePage extends Page {
             value={f.text}
             placeholder={extractText(t('page.search'))}
             aria-label={extractText(t('page.search'))}
-            oninput={(e) => this.set({ text: e.target.value })}
+            oninput={(e: InputEvent) => this.set({ text: (e.target as HTMLInputElement).value })}
           />
         </label>
         <div className="GarageToolbar-selects">
-          <Select options={sorts} value={f.sort} onchange={(sort) => this.set({ sort })} aria-label={extractText(t('page.sort.label'))} />
-          <Select options={stages} value={f.stage} onchange={(stage) => this.set({ stage })} aria-label={extractText(t('page.stage_label'))} />
+          <Select options={sorts} value={f.sort} onchange={(sort: string) => this.set({ sort })} aria-label={extractText(t('page.sort.label'))} />
+          <Select
+            options={stages}
+            value={f.stage}
+            onchange={(stage: string) => this.set({ stage })}
+            aria-label={extractText(t('page.stage_label'))}
+          />
           {filterFields.map((field) => {
-            const options = { '': extractText(t('page.spec_any', { label: field.label })) };
-            field.options.forEach((option) => (options[option] = option));
+            const options: Record<string, string> = { '': extractText(t('page.spec_any', { label: field.label })) };
+            (field.options || []).forEach((option) => (options[option] = option));
             return (
               <Select
                 options={options}
                 value={specKey === field.key ? specValue : ''}
-                onchange={(value) => this.set({ spec: value ? `${field.key}:${value}` : '' })}
+                onchange={(value: string) => this.set({ spec: value ? `${field.key}:${value}` : '' })}
                 aria-label={field.label}
               />
             );

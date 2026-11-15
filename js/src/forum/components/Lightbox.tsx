@@ -1,17 +1,19 @@
 import app from 'flarum/forum/app';
 import Icon from 'flarum/common/components/Icon';
 import extractText from 'flarum/common/utils/extractText';
+import type Mithril from 'mithril';
+import type { GaragePhoto } from '../../common/models';
 import { t } from '../util';
 
-let holder = null;
+let holder: HTMLElement | null = null;
 
 /** Full-screen photos: arrows, Escape, swipe, and a count. Mounted on its own, outside the page. */
-export function openLightbox(photos, index = 0, caption = '') {
+export function openLightbox(photos: GaragePhoto[] | null | undefined, index = 0, caption = '') {
   if (!photos?.length) return;
-  const opener = document.activeElement;
+  const opener = document.activeElement as HTMLElement | null;
   holder ??= document.body.appendChild(document.createElement('div'));
   const close = () => {
-    m.mount(holder, null);
+    m.mount(holder!, null);
     document.documentElement.classList.remove('GarageLightbox-open');
     opener?.focus?.();
   };
@@ -19,10 +21,21 @@ export function openLightbox(photos, index = 0, caption = '') {
   m.mount(holder, { view: () => <Lightbox photos={photos} index={index} caption={caption} onclose={close} /> });
 }
 
+interface LightboxAttrs {
+  photos: GaragePhoto[];
+  index: number;
+  caption: string;
+  onclose: () => void;
+}
+
 class Lightbox {
-  oninit(vnode) {
+  index!: number;
+  keys!: (e: KeyboardEvent) => void;
+  start!: number | null | undefined;
+
+  oninit(vnode: Mithril.Vnode<LightboxAttrs, this>) {
     this.index = vnode.attrs.index;
-    this.keys = (e) => {
+    this.keys = (e: KeyboardEvent) => {
       if (e.key === 'Escape') vnode.attrs.onclose();
       if (e.key === 'ArrowRight') this.go(vnode.attrs, 1);
       if (e.key === 'ArrowLeft') this.go(vnode.attrs, -1);
@@ -30,21 +43,21 @@ class Lightbox {
     window.addEventListener('keydown', this.keys);
   }
 
-  oncreate(vnode) {
-    vnode.dom.querySelector('.GarageLightbox-close')?.focus();
+  oncreate(vnode: Mithril.VnodeDOM<LightboxAttrs, this>) {
+    vnode.dom.querySelector<HTMLElement>('.GarageLightbox-close')?.focus();
   }
 
   onremove() {
     window.removeEventListener('keydown', this.keys);
   }
 
-  go(attrs, step) {
+  go(attrs: LightboxAttrs, step: number) {
     const count = attrs.photos.length;
     this.index = (this.index + step + count) % count;
     m.redraw();
   }
 
-  view(vnode) {
+  view(vnode: Mithril.Vnode<LightboxAttrs, this>) {
     const { photos, caption, onclose } = vnode.attrs;
     const photo = photos[this.index];
     const many = photos.length > 1;
@@ -55,11 +68,11 @@ class Lightbox {
         role="dialog"
         aria-modal="true"
         aria-label={caption || extractText(t('build.gallery'))}
-        onclick={(e) => {
+        onclick={(e: MouseEvent) => {
           if (e.target === e.currentTarget) onclose();
         }}
-        onpointerdown={(e) => (this.start = e.clientX)}
-        onpointerup={(e) => {
+        onpointerdown={(e: PointerEvent) => (this.start = e.clientX)}
+        onpointerup={(e: PointerEvent) => {
           const moved = e.clientX - (this.start ?? e.clientX);
           if (many && Math.abs(moved) > 50) this.go(vnode.attrs, moved < 0 ? 1 : -1);
           this.start = null;
@@ -105,8 +118,15 @@ class Lightbox {
  * through them all. With FoF PhotoSwipe on, its viewer takes these links, as it
  * does a post's images; otherwise Garage's own does.
  */
+interface PhotoGridAttrs {
+  photos: GaragePhoto[] | null | undefined;
+  caption?: string;
+  limit?: number;
+  cover?: boolean;
+}
+
 export class PhotoGrid {
-  view(vnode) {
+  view(vnode: Mithril.Vnode<PhotoGridAttrs, this>) {
     const { photos, caption, limit, cover } = vnode.attrs;
     if (!photos?.length) return null;
     const shown = Math.min(limit || photos.length, photos.length);
@@ -115,15 +135,15 @@ export class PhotoGrid {
 
     return (
       <div className={'GarageGallery ' + className}>
-        {photos.map((photo, i) => (
+        {photos.map((photo: GaragePhoto, i: number) => (
           <a
             href={photo.url}
-            className={cover ? null : 'GaragePhotos-item'}
+            className={cover ? undefined : 'GaragePhotos-item'}
             hidden={i >= shown}
             data-pswp=""
             data-pswp-width={photo.w || undefined}
             data-pswp-height={photo.h || undefined}
-            onclick={(e) => {
+            onclick={(e: MouseEvent) => {
               if (photoswipe || e.ctrlKey || e.metaKey || e.shiftKey) return;
               e.preventDefault();
               openLightbox(photos, i, caption);
@@ -149,5 +169,6 @@ export class PhotoGrid {
 }
 
 // Read when this chunk loads: by then every enabled extension has booted.
-const photoswipe = flarum.extensions['fof-photoswipe']?.Gallery;
+type PhotoSwipeGallery = new (component: unknown, selector: string) => { extend(app: unknown, extension: unknown): void };
+const photoswipe = (flarum.extensions['fof-photoswipe'] as { Gallery?: PhotoSwipeGallery } | undefined)?.Gallery;
 if (photoswipe) new photoswipe(PhotoGrid, '.GarageGallery').extend(app, { name: 'ernestdefoe-garage', exports: {} });

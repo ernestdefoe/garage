@@ -1,4 +1,4 @@
-let loading = null;
+let loading: Promise<void> | null = null;
 
 /**
  * Garage's page styles: a chunk of their own, fetched once beside the first

@@ -1,20 +1,21 @@
 import app from 'flarum/forum/app';
-import Component from 'flarum/common/Component';
+import Component, { type ComponentAttrs } from 'flarum/common/Component';
 import TextEditor from 'flarum/common/components/TextEditor';
 import { LINK } from '../text';
 import { t } from '../util';
+import type Mithril from 'mithril';
 
 /** Scribe's editor is on: its forum code has loaded, and the server takes its HTML. */
 export const scribe = () => !!(app.forum.attribute('garageRichText') && flarum.extensions['ernestdefoe-scribe']);
 
-const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /**
  * Plain text as the HTML Scribe loads: the paragraphs, line breaks and links
  * text.js shows. Scribe would read text that isn't HTML as Markdown, so a `*`
  * or `#` in an old story would change on its first edit.
  */
-export function plainToHtml(text) {
+export function plainToHtml(text: string): string {
   return text
     .replace(/\r\n/g, '\n')
     .split(/\n{2,}/)
@@ -38,8 +39,23 @@ export function plainToHtml(text) {
  * ('text', text): the form sends only what was changed, so opening and saving
  * never turns plain text into HTML, or Scribe's formatting into plain text.
  */
-export default class TextField extends Component {
-  oninit(vnode) {
+export interface TextFieldAttrs extends ComponentAttrs {
+  id: string;
+  name: string;
+  rows?: number;
+  placeholder?: string;
+  /** The stored plain text. */
+  text?: string | null;
+  /** Scribe's HTML, when it was written in Scribe. */
+  source?: string | null;
+  onchange: (kind: 'source' | 'text', value: string) => void;
+}
+
+export default class TextField extends Component<TextFieldAttrs> {
+  holder!: Record<string, unknown>;
+  value!: string;
+
+  oninit(vnode: Mithril.Vnode<TextFieldAttrs, this>) {
     super.oninit(vnode);
     // TextEditor attaches its editor driver here, as it would to the composer.
     this.holder = {};
@@ -56,7 +72,7 @@ export default class TextField extends Component {
             composer={this.holder}
             value={this.value}
             placeholder={placeholder}
-            onchange={(html) => onchange('source', html)}
+            onchange={(html: string) => onchange('source', html)}
             onsubmit={() => {}}
           />
         </div>
@@ -72,7 +88,7 @@ export default class TextField extends Component {
         maxlength="20000"
         value={this.value}
         placeholder={placeholder}
-        oninput={(e) => onchange('text', (this.value = e.target.value))}
+        oninput={(e: InputEvent) => onchange('text', (this.value = (e.target as HTMLTextAreaElement).value))}
       />,
       // Written in Scribe, which is off now: an edit here keeps only the words.
       source ? <p className="helpText">{t('edit.formatted_help')}</p> : null,

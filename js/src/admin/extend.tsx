@@ -1,11 +1,14 @@
 import app from 'flarum/admin/app';
 import Extend from 'flarum/common/extenders';
 import CategoriesEditor from './CategoriesEditor';
+import commonExtend from '../common/extend';
 
-const t = (key) => app.translator.trans(`ernestdefoe-garage.admin.${key}`);
-const setting = (key) => `ernestdefoe-garage.${key}`;
+const t = (key: string) => app.translator.trans(`ernestdefoe-garage.admin.${key}`);
+const setting = (key: string) => `ernestdefoe-garage.${key}`;
 
 export default [
+  ...commonExtend,
+
   new Extend.Admin()
     .customSetting(() => <CategoriesEditor />, 200)
     .setting(() => ({ setting: setting('nav'), type: 'boolean', label: t('settings.nav') }), 100)

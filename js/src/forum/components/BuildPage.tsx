@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
-import Page from 'flarum/common/components/Page';
+import type Mithril from 'mithril';
+import Page, { type IPageAttrs } from 'flarum/common/components/Page';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
@@ -18,6 +19,8 @@ import { PhotoGrid } from './Lightbox';
 import { formatSpec } from './BuildCard';
 import { openBuildEditor, openEntryEditor, postAbout } from './openers';
 import useStyles from '../styles';
+import type { GarageBuild, GarageComment, GarageEntry } from '../../common/models';
+import type { LogState } from '../types';
 import richText from '../text';
 import { t, buildUrl, money, categoryColor, STAGE_ICONS } from '../util';
 
@@ -29,8 +32,11 @@ const logIn = () => app.modal.show(() => import('flarum/forum/components/LogInMo
  * build log and the comments. The build, its log and its comments are three
  * requests sent at once.
  */
-export default class BuildPage extends Page {
-  oninit(vnode) {
+export default class BuildPage extends Page<IPageAttrs, LogState> {
+  build!: GarageBuild | null;
+  missing!: boolean;
+
+  oninit(vnode: Mithril.Vnode<IPageAttrs, this>) {
     super.oninit(vnode);
     useStyles();
     this.build = null;
@@ -40,9 +46,9 @@ export default class BuildPage extends Page {
 
   load() {
     const id = String(m.route.param('id')).split('-')[0];
-    const build = app.store.find('garage-builds', id);
-    const entries = app.store.find('garage-entries', { filter: { build: id }, page: { limit: 20, total: 0 } });
-    const comments = app.store.find('garage-comments', { filter: { build: id }, page: { limit: 200, total: 0 } });
+    const build = app.store.find<GarageBuild>('garage-builds', id);
+    const entries = app.store.find<GarageEntry[]>('garage-entries', { filter: { build: id }, page: { limit: 20, total: 0 } });
+    const comments = app.store.find<GarageComment[]>('garage-comments', { filter: { build: id }, page: { limit: 200, total: 0 } });
 
     build.then(
       (found) => {
@@ -69,7 +75,11 @@ export default class BuildPage extends Page {
         this.state.loaded = true;
         m.redraw();
       },
-      () => {}
+      // Flarum has already shown the request's error: the page stays up with an empty log.
+      () => {
+        this.state.loaded = true;
+        m.redraw();
+      }
     );
   }
 
@@ -92,7 +102,7 @@ export default class BuildPage extends Page {
   }
 
   hero() {
-    const build = this.build;
+    const build = this.build!;
     const cover = build.cover();
     const category = build.category();
     const user = build.user();
@@ -141,7 +151,7 @@ export default class BuildPage extends Page {
   }
 
   sidebarItems() {
-    const build = this.build;
+    const build = this.build!;
     const items = new ItemList();
 
     if (build.canEdit()) {
@@ -164,7 +174,7 @@ export default class BuildPage extends Page {
   }
 
   followButton(className = '') {
-    const build = this.build;
+    const build = this.build!;
     const following = build.followed();
 
     return (
@@ -183,7 +193,7 @@ export default class BuildPage extends Page {
   }
 
   actionItems() {
-    const build = this.build;
+    const build = this.build!;
     const items = new ItemList();
     const liked = build.liked();
 
@@ -250,7 +260,7 @@ export default class BuildPage extends Page {
   }
 
   controls() {
-    const build = this.build;
+    const build = this.build!;
     const items = new ItemList();
 
     if (build.canEdit()) {
@@ -308,7 +318,7 @@ export default class BuildPage extends Page {
   }
 
   specSheet() {
-    const build = this.build;
+    const build = this.build!;
     const fields = build.category()?.fields() || [];
     const specs = build.specs() || {};
     const rows = fields.filter((field) => specs[field.key] !== undefined && specs[field.key] !== '');
@@ -341,8 +351,8 @@ export default class BuildPage extends Page {
   }
 
   stats() {
-    const build = this.build;
-    const stat = (icon, label, value) => (
+    const build = this.build!;
+    const stat = (icon: string, label: Mithril.Children, value: Mithril.Children) => (
       <div className="GarageStats-item">
         <dt>
           <Icon name={icon} /> {label}
@@ -363,7 +373,7 @@ export default class BuildPage extends Page {
   }
 
   content() {
-    const build = this.build;
+    const build = this.build!;
     const photos = build.photos() || [];
 
     return (
@@ -434,8 +444,8 @@ export default class BuildPage extends Page {
 
   /** The owner's other builds: a quiet link at the end. */
   more() {
-    const user = this.build.user();
-    if (!user || (user.attribute('garageBuildCount') || 0) < 2) return null;
+    const user = this.build!.user();
+    if (!user || (user.attribute<number>('garageBuildCount') || 0) < 2) return null;
 
     return (
       <Link className="GarageMore" href={app.route('user.garage', { username: user.slug() })}>
@@ -445,16 +455,16 @@ export default class BuildPage extends Page {
   }
 
   copyLink() {
-    const url = app.forum.attribute('baseUrl') + buildUrl(this.build).replace(app.forum.attribute('basePath') || '', '');
+    const url = app.forum.attribute('baseUrl') + buildUrl(this.build!).replace(app.forum.attribute('basePath') || '', '');
     const done = () => app.alerts.show({ type: 'success' }, t('build.link_copied'));
     if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => window.prompt('', url));
     else window.prompt('', url);
   }
 
   remove() {
-    if (!confirm(extractText(t('build.delete_confirm', { title: this.build.title() })))) return;
-    const user = this.build.user();
-    this.build.delete().then(() => {
+    if (!confirm(extractText(t('build.delete_confirm', { title: this.build!.title() })))) return;
+    const user = this.build!.user();
+    this.build!.delete().then(() => {
       m.route.set(user ? app.route('user.garage', { username: user.slug() }) : app.route('garage'));
     });
   }

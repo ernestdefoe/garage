@@ -5,10 +5,9 @@ import LinkButton from 'flarum/common/components/LinkButton';
 import UserPage from 'flarum/forum/components/UserPage';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import CommentPost from 'flarum/forum/components/CommentPost';
-import { registerModels } from '../common/models';
 import EmbedCard from './components/EmbedCard';
+import type { GarageCardData } from '../common/models';
 import { t } from './util';
-import { loadStyles } from './styles';
 
 /*
  * forum.js is loaded on every page, so it only wires things up: the routes,
@@ -18,19 +17,12 @@ import { loadStyles } from './styles';
  */
 
 app.initializers.add('ernestdefoe-garage', () => {
-  registerModels(app);
-
   // A window opened over a build or update form (FoF Upload's file-name prompt,
   // say) stacks on top instead of replacing it, so what was written isn't lost.
-  override(ModalManagerState.prototype, 'show', function (original, componentClass, attrs, stack = false) {
-    return original(componentClass, attrs, stack || !!this.modal?.componentClass?.keepsOthersOnTop);
+  override(ModalManagerState.prototype, 'show', function (this: ModalManagerState, original, componentClass, attrs, stack = false) {
+    const top = this.modal?.componentClass as { keepsOthersOnTop?: boolean } | undefined;
+    return original(componentClass, attrs, stack || !!top?.keepsOthersOnTop);
   });
-
-  // Each page and the shared styles load side by side.
-  const page = (load) => () => Promise.all([load(), loadStyles()]).then(([module]) => module);
-  app.routes['garage'] = { path: '/garage', component: page(() => import('./components/GaragePage')) };
-  app.routes['garage.build'] = { path: '/garage/:id', component: page(() => import('./components/BuildPage')) };
-  app.routes['user.garage'] = { path: '/u/:username/garage', component: page(() => import('./components/UserGaragePage')) };
 
   extend(IndexSidebar.prototype, 'navItems', function (items) {
     if (!app.forum.attribute('garageCanView') || !app.forum.attribute('garageNav')) return;
@@ -69,7 +61,8 @@ app.initializers.add('ernestdefoe-garage', () => {
   // With FoF Signature: the build the member chose, under their posts.
   extend(CommentPost.prototype, 'content', function (content) {
     const post = this.attrs.post;
-    const card = post.user?.()?.attribute?.('garageSignature');
+    const user = post.user();
+    const card = user ? user.attribute<GarageCardData | null>('garageSignature') : null;
     if (!card || post.isHidden()) return;
     content.push(
       <div className="GarageSignature">
@@ -84,13 +77,13 @@ app.initializers.add('ernestdefoe-garage', () => {
  * drawn INSIDE the paragraph (which stays where it is): Mithril tracks the
  * post's top-level nodes, and replacing one would break its next redraw.
  */
-function embedBuilds() {
-  const cards = this.attrs.post.attribute('garageEmbeds');
+function embedBuilds(this: CommentPost) {
+  const cards = this.attrs.post.attribute<GarageCardData[] | null>('garageEmbeds');
   const body = cards && this.element?.querySelector('.Post-body');
   if (!body) return;
 
   const base = app.forum.attribute('baseUrl') + '/garage/';
-  body.querySelectorAll('a[href]:not([data-garage])').forEach((link) => {
+  body.querySelectorAll<HTMLAnchorElement>('a[href]:not([data-garage])').forEach((link) => {
     if (!link.href.startsWith(base)) return;
     link.dataset.garage = '1';
     const match = link.href.slice(base.length).match(/^(\d+)/);

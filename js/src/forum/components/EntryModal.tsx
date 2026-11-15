@@ -1,14 +1,25 @@
 import app from 'flarum/forum/app';
-import FormModal from 'flarum/common/components/FormModal';
+import FormModal, { type IFormModalAttrs } from 'flarum/common/components/FormModal';
 import Button from 'flarum/common/components/Button';
 import Stream from 'flarum/common/utils/Stream';
 import extractText from 'flarum/common/utils/extractText';
 import PhotoManager, { PhotoQueue } from './PhotoManager';
 import TextField from './TextField';
 import useStyles from '../styles';
+import type Mithril from 'mithril';
+import type RequestError from 'flarum/common/utils/RequestError';
+import type { GarageBuild, GarageEntry } from '../../common/models';
+import type { LogState } from '../types';
 import { t } from '../util';
 
 const MAX_PHOTOS = 12;
+
+export interface EntryModalAttrs extends IFormModalAttrs {
+  build: GarageBuild;
+  entry?: GarageEntry | null;
+  /** The page's build log (a modal's own `state` attribute is taken). */
+  log?: LogState;
+}
 
 const today = () => {
   const d = new Date();
@@ -19,11 +30,20 @@ const today = () => {
  * Add or edit a log entry: what was done, when, what it cost and photos of
  * it. The build's followers are told about a new one.
  */
-export default class EntryModal extends FormModal {
+export default class EntryModal extends FormModal<EntryModalAttrs> {
+  /** [field, value] once the text is changed. */
+  bodyEdit!: ['body' | 'bodySource', string] | null;
+  cost!: Stream<string | number>;
+  entry!: GarageEntry | null;
+  happenedOn!: Stream<string>;
+  headline!: Stream<string>;
+  progress!: Mithril.Children;
+  queue!: PhotoQueue;
+
   // Windows opened over this form stack on it (see forum/index.js).
   static keepsOthersOnTop = true;
 
-  oninit(vnode) {
+  oninit(vnode: Mithril.Vnode<EntryModalAttrs, this>) {
     super.oninit(vnode);
     useStyles();
     const entry = (this.entry = this.attrs.entry || null);
@@ -44,7 +64,7 @@ export default class EntryModal extends FormModal {
   }
 
   content() {
-    const currency = app.forum.attribute('garageCurrency') ?? '$';
+    const currency = app.forum.attribute<string | null>('garageCurrency') ?? '$';
 
     return (
       <div className="Modal-body">
@@ -91,7 +111,7 @@ export default class EntryModal extends FormModal {
               text={this.entry?.body()}
               source={this.entry?.bodySource()}
               placeholder={extractText(t('entry_edit.body_placeholder'))}
-              onchange={(kind, value) => (this.bodyEdit = [kind === 'source' ? 'bodySource' : 'body', value])}
+              onchange={(kind: 'source' | 'text', value: string) => (this.bodyEdit = [kind === 'source' ? 'bodySource' : 'body', value])}
             />
           </div>
           <fieldset className="GarageEdit-photos">
@@ -108,11 +128,11 @@ export default class EntryModal extends FormModal {
     );
   }
 
-  endpoint(entry) {
+  endpoint(entry: GarageEntry): string {
     return `${app.forum.attribute('apiUrl')}/garage-entries/${entry.id()}`;
   }
 
-  async onsubmit(e) {
+  async onsubmit(e: SubmitEvent) {
     e.preventDefault();
     this.loading = true;
     this.alertAttrs = null;
@@ -120,9 +140,9 @@ export default class EntryModal extends FormModal {
     // `log` is the page's build log (a modal's own `state` attribute is taken).
     const { build, log: state } = this.attrs;
     const isNew = !this.entry;
-    let entry = this.entry || app.store.createRecord('garage-entries');
+    let entry: GarageEntry = this.entry || app.store.createRecord<GarageEntry>('garage-entries');
     const cost = String(this.cost()).trim();
-    const data = {
+    const data: Record<string, unknown> = {
       title: this.headline(),
       cost: cost === '' ? null : Number(cost),
       happenedOn: this.happenedOn() || today(),
@@ -140,16 +160,16 @@ export default class EntryModal extends FormModal {
       if (failed.length) app.alerts.show({ type: 'error' }, t('edit.upload_failed', { names: failed.join(', ') }));
 
       if (isNew && state) state.entries = [entry, ...state.entries];
-      if (state) state.entries.sort((a, b) => String(b.happenedOn()).localeCompare(String(a.happenedOn())) || b.id() - a.id());
+      if (state) state.entries.sort((a, b) => String(b.happenedOn()).localeCompare(String(a.happenedOn())) || Number(b.id()) - Number(a.id()));
       // The build's counts, latest entry and spend.
-      await app.store.find('garage-builds', build.id());
+      await app.store.find<GarageBuild>('garage-builds', build.id()!);
 
       this.hide();
     } catch (error) {
       console.error(error);
       this.loading = false;
       this.progress = null;
-      this.onerror(error);
+      this.onerror(error as RequestError);
     }
   }
 }

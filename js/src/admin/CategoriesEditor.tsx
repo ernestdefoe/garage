@@ -4,8 +4,20 @@ import Icon from 'flarum/common/components/Icon';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Select from 'flarum/common/components/Select';
 import extractText from 'flarum/common/utils/extractText';
+import type { GarageCategory, GarageField } from '../common/models';
 
-const t = (key, params = {}) => app.translator.trans(`ernestdefoe-garage.admin.categories.${key}`, params);
+/** A field being edited: a new one has no key yet, and its options are one textarea. */
+type DraftField = Omit<GarageField, 'key'> & { key?: string; optionsText?: string };
+
+interface Draft {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  fields: DraftField[];
+}
+
+const t = (key: string, params: Record<string, unknown> = {}) => app.translator.trans(`ernestdefoe-garage.admin.categories.${key}`, params);
 const TYPES = ['text', 'number', 'select', 'link'];
 
 /**
@@ -14,11 +26,16 @@ const TYPES = ['text', 'number', 'select', 'link'];
  * members. A field keeps its key when renamed, so builds keep their values.
  */
 export default class CategoriesEditor {
+  categories!: GarageCategory[] | null;
+  draft!: Draft | null;
+  open!: GarageCategory | 'new' | null;
+  saving!: boolean;
+
   oninit() {
     this.categories = null;
     this.open = null;
     this.draft = null;
-    app.store.find('garage-categories').then((list) => {
+    app.store.find<GarageCategory[]>('garage-categories').then((list) => {
       this.categories = [...list].sort((a, b) => a.position() - b.position());
       m.redraw();
     });
@@ -46,7 +63,7 @@ export default class CategoriesEditor {
     );
   }
 
-  row(category, i) {
+  row(category: GarageCategory, i: number) {
     const isOpen = this.open === category;
     return (
       <li className={'GarageCategories-item' + (isOpen ? ' is-open' : '')} key={category.id()}>
@@ -69,7 +86,7 @@ export default class CategoriesEditor {
             <Button
               className="Button Button--icon"
               icon="fas fa-arrow-down"
-              disabled={i === this.categories.length - 1}
+              disabled={i === this.categories!.length - 1}
               aria-label={extractText(t('move_down'))}
               onclick={() => this.move(i, 1)}
             />
@@ -87,20 +104,21 @@ export default class CategoriesEditor {
     );
   }
 
-  edit(category) {
+  edit(category: GarageCategory | null) {
     this.open = category || 'new';
     this.draft = {
       name: category?.name() || '',
       description: category?.description() || '',
       icon: category?.icon() || 'fas fa-screwdriver-wrench',
       color: category?.color() || '#c2410c',
-      fields: JSON.parse(JSON.stringify(category?.fields() || [])).map((f) => ({ ...f, optionsText: (f.options || []).join('\n') })),
+      fields: JSON.parse(JSON.stringify(category?.fields() || [])).map((f: GarageField) => ({ ...f, optionsText: (f.options || []).join('\n') })),
     };
   }
 
-  form(category) {
-    const d = this.draft;
-    const types = {};
+  form(category: GarageCategory | null) {
+    // Set by edit() whenever a form is open.
+    const d = this.draft!;
+    const types: Record<string, string> = {};
     TYPES.forEach((type) => (types[type] = extractText(t(`types.${type}`))));
 
     return (
@@ -108,24 +126,49 @@ export default class CategoriesEditor {
         <div className="GarageCategories-grid">
           <label>
             {t('name')}
-            <input className="FormControl" maxlength="80" value={d.name} oninput={(e) => (d.name = e.target.value)} />
+            <input
+              className="FormControl"
+              maxlength="80"
+              value={d.name}
+              oninput={(e: InputEvent) => (d.name = (e.target as HTMLInputElement).value)}
+            />
           </label>
           <label>
             {t('icon')}
-            <input className="FormControl" maxlength="60" value={d.icon} placeholder="fas fa-car" oninput={(e) => (d.icon = e.target.value)} />
+            <input
+              className="FormControl"
+              maxlength="60"
+              value={d.icon}
+              placeholder="fas fa-car"
+              oninput={(e: InputEvent) => (d.icon = (e.target as HTMLInputElement).value)}
+            />
           </label>
           <label>
             {t('color')}
             <span className="GarageCategories-color">
-              <input type="color" value={/^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#c2410c'} oninput={(e) => (d.color = e.target.value)} />
-              <input className="FormControl" maxlength="9" value={d.color} oninput={(e) => (d.color = e.target.value)} />
+              <input
+                type="color"
+                value={/^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#c2410c'}
+                oninput={(e: InputEvent) => (d.color = (e.target as HTMLInputElement).value)}
+              />
+              <input
+                className="FormControl"
+                maxlength="9"
+                value={d.color}
+                oninput={(e: InputEvent) => (d.color = (e.target as HTMLInputElement).value)}
+              />
             </span>
           </label>
         </div>
         <p className="helpText">{t('icon_help')}</p>
         <label>
           {t('description')}
-          <input className="FormControl" maxlength="300" value={d.description} oninput={(e) => (d.description = e.target.value)} />
+          <input
+            className="FormControl"
+            maxlength="300"
+            value={d.description}
+            oninput={(e: InputEvent) => (d.description = (e.target as HTMLInputElement).value)}
+          />
         </label>
 
         <h4>{t('fields')}</h4>
@@ -140,9 +183,14 @@ export default class CategoriesEditor {
                   value={field.label}
                   placeholder={extractText(t('field_label'))}
                   aria-label={extractText(t('field_label'))}
-                  oninput={(e) => (field.label = e.target.value)}
+                  oninput={(e: InputEvent) => (field.label = (e.target as HTMLInputElement).value)}
                 />
-                <Select options={types} value={field.type} onchange={(type) => (field.type = type)} aria-label={extractText(t('field_type'))} />
+                <Select
+                  options={types}
+                  value={field.type}
+                  onchange={(type: GarageField['type']) => (field.type = type)}
+                  aria-label={extractText(t('field_type'))}
+                />
                 <Button
                   className="Button Button--icon"
                   icon="fas fa-arrow-up"
@@ -167,7 +215,12 @@ export default class CategoriesEditor {
               {field.type === 'select' ? (
                 <label className="GarageFields-extra">
                   {t('options')}
-                  <textarea className="FormControl" rows="3" value={field.optionsText || ''} oninput={(e) => (field.optionsText = e.target.value)} />
+                  <textarea
+                    className="FormControl"
+                    rows="3"
+                    value={field.optionsText || ''}
+                    oninput={(e: InputEvent) => (field.optionsText = (e.target as HTMLTextAreaElement).value)}
+                  />
                   <span className="helpText">{t('options_help')}</span>
                 </label>
               ) : null}
@@ -179,20 +232,24 @@ export default class CategoriesEditor {
                     maxlength="12"
                     value={field.unit || ''}
                     placeholder="hp, kg, mm…"
-                    oninput={(e) => (field.unit = e.target.value)}
+                    oninput={(e: InputEvent) => (field.unit = (e.target as HTMLInputElement).value)}
                   />
                 </label>
               ) : null}
               <div className="GarageFields-flags">
                 {field.type !== 'link' ? (
                   <label className="checkbox">
-                    <input type="checkbox" checked={!!field.card} onchange={(e) => (field.card = e.target.checked)} />
+                    <input type="checkbox" checked={!!field.card} onchange={(e: Event) => (field.card = (e.target as HTMLInputElement).checked)} />
                     {t('card')}
                   </label>
                 ) : null}
                 {field.type === 'select' ? (
                   <label className="checkbox">
-                    <input type="checkbox" checked={!!field.filter} onchange={(e) => (field.filter = e.target.checked)} />
+                    <input
+                      type="checkbox"
+                      checked={!!field.filter}
+                      onchange={(e: Event) => (field.filter = (e.target as HTMLInputElement).checked)}
+                    />
                     {t('filter')}
                   </label>
                 ) : null}
@@ -221,28 +278,28 @@ export default class CategoriesEditor {
     );
   }
 
-  swap(list, a, b) {
+  swap<T>(list: T[], a: number, b: number) {
     [list[a], list[b]] = [list[b], list[a]];
   }
 
-  save(category) {
-    const d = this.draft;
+  save(category: GarageCategory | null) {
+    const d = this.draft!;
     const fields = d.fields.map(({ optionsText, ...field }) => ({
       ...field,
       options:
         field.type === 'select'
           ? (optionsText || '')
               .split('\n')
-              .map((o) => o.trim())
+              .map((o: string) => o.trim())
               .filter(Boolean)
           : undefined,
     }));
     this.saving = true;
 
-    (category || app.store.createRecord('garage-categories'))
+    (category || app.store.createRecord<GarageCategory>('garage-categories'))
       .save({ name: d.name, description: d.description || null, icon: d.icon || null, color: d.color || null, fields })
       .then((saved) => {
-        if (!category) this.categories.push(saved);
+        if (!category) this.categories!.push(saved);
         this.open = null;
         app.alerts.show({ type: 'success' }, t('saved'));
       })
@@ -252,17 +309,17 @@ export default class CategoriesEditor {
       });
   }
 
-  move(i, step) {
-    this.swap(this.categories, i, i + step);
+  move(i: number, step: number) {
+    this.swap(this.categories!, i, i + step);
     app.request({
       method: 'POST',
       url: app.forum.attribute('apiUrl') + '/garage-categories/order',
-      body: { ids: this.categories.map((c) => c.id()) },
+      body: { ids: this.categories!.map((c) => c.id()) },
     });
   }
 
-  remove(category) {
-    const others = this.categories.filter((c) => c !== category);
+  remove(category: GarageCategory) {
+    const others = this.categories!.filter((c) => c !== category);
     const message = category.buildCount()
       ? others.length
         ? t('delete_confirm_move', { name: category.name(), count: category.buildCount(), to: others[0].name() })
@@ -275,7 +332,7 @@ export default class CategoriesEditor {
     category.delete().then(() => {
       this.categories = others;
       this.open = null;
-      if (category.buildCount()) app.store.find('garage-categories');
+      if (category.buildCount()) app.store.find<GarageCategory[]>('garage-categories');
       m.redraw();
     });
   }

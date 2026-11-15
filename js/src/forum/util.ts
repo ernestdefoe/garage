@@ -1,16 +1,18 @@
 import app from 'flarum/forum/app';
+import Model from 'flarum/common/Model';
+import type { GarageBuild, GarageCardData } from '../common/models';
 
-export const t = (key, params = {}) => app.translator.trans(`ernestdefoe-garage.forum.${key}`, params);
+export const t = (key: string, params: Record<string, unknown> = {}) => app.translator.trans(`ernestdefoe-garage.forum.${key}`, params);
 
 /** A build's page: from a model or from a card's plain data. */
-export function buildUrl(build) {
-  const id = typeof build.id === 'function' ? build.id() : build.id;
-  const slug = typeof build.slug === 'function' ? build.slug() : build.slug;
+export function buildUrl(build: GarageBuild | GarageCardData): string {
+  const id = build instanceof Model ? build.id() : build.id;
+  const slug = build instanceof Model ? build.slug() : build.slug;
   return app.route('garage.build', { id: slug ? `${id}-${slug}` : id });
 }
 
 /** An amount with the admin's currency sign: "$1,250". */
-export function money(amount) {
+export function money(amount: number | string | null | undefined): string {
   if (amount === null || amount === undefined) return '';
   const sign = app.forum.attribute('garageCurrency') ?? '$';
   const cents = Number(amount) % 1 ? 2 : 0;
@@ -20,7 +22,7 @@ export function money(amount) {
 
 export const STAGES = ['planning', 'in_progress', 'complete', 'for_sale', 'retired'];
 
-export const STAGE_ICONS = {
+export const STAGE_ICONS: Record<string, string> = {
   planning: 'fas fa-compass-drafting',
   in_progress: 'fas fa-screwdriver-wrench',
   complete: 'fas fa-flag-checkered',
@@ -29,6 +31,6 @@ export const STAGE_ICONS = {
 };
 
 /** A category's colour as a CSS value, or the forum's primary colour. */
-export function categoryColor(color) {
-  return /^#[0-9a-f]{3,8}$/i.test(color || '') ? color : 'var(--primary-color)';
+export function categoryColor(color: string | null | undefined): string {
+  return color && /^#[0-9a-f]{3,8}$/i.test(color) ? color : 'var(--primary-color)';
 }

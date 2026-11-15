@@ -6,6 +6,15 @@ import humanTime from 'flarum/common/helpers/humanTime';
 import extractText from 'flarum/common/utils/extractText';
 import richText from '../text';
 import { t } from '../util';
+import type Mithril from 'mithril';
+import type { GarageBuild, GarageComment, GarageEntry } from '../../common/models';
+import type { LogState } from '../types';
+
+interface CommentsAttrs {
+  build: GarageBuild;
+  entry?: GarageEntry | null;
+  state: LogState;
+}
 
 /**
  * The comments on a build, or on one of its log entries (attrs.entry). The
@@ -13,20 +22,25 @@ import { t } from '../util';
  * belongs as soon as it is posted.
  */
 export default class Comments {
+  body!: string;
+  draft!: string;
+  editing!: GarageComment | null;
+  saving!: boolean;
+
   oninit() {
     this.body = '';
     this.saving = false;
     this.editing = null;
   }
 
-  oncreate(vnode) {
+  oncreate(vnode: Mithril.VnodeDOM<CommentsAttrs, this>) {
     // A notification about this comment: scroll to it once it is drawn.
     const wanted = m.route.param('comment');
     const node = wanted && vnode.dom.querySelector(`[data-comment="${CSS.escape(wanted)}"]`);
     if (node) setTimeout(() => node.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
   }
 
-  view(vnode) {
+  view(vnode: Mithril.Vnode<CommentsAttrs, this>) {
     const { build, entry, state } = vnode.attrs;
     const entryId = entry ? Number(entry.id()) : null;
     const comments = state.comments.filter((c) => (c.entryId() || null) === entryId);
@@ -47,7 +61,7 @@ export default class Comments {
     );
   }
 
-  comment(comment, state) {
+  comment(comment: GarageComment, state: LogState) {
     const user = comment.user();
     const editing = this.editing === comment;
 
@@ -61,7 +75,7 @@ export default class Comments {
                 {user.displayName()}
               </Link>
             ) : null}
-            <span className="GarageComment-time">{humanTime(comment.createdAt())}</span>
+            <span className="GarageComment-time">{humanTime(comment.createdAt()!)}</span>
             {comment.editedAt() ? <span className="GarageComment-edited">{t('comment.edited')}</span> : null}
           </div>
           {editing ? (
@@ -72,7 +86,7 @@ export default class Comments {
                 value={this.draft}
                 maxlength="2000"
                 aria-label={extractText(t('comment.edit'))}
-                oninput={(e) => (this.draft = e.target.value)}
+                oninput={(e: InputEvent) => (this.draft = (e.target as HTMLTextAreaElement).value)}
               />
               <div className="GarageComment-actions">
                 <Button className="Button Button--primary" loading={this.saving} disabled={!this.draft.trim()} onclick={() => this.saveEdit(comment)}>
@@ -93,7 +107,8 @@ export default class Comments {
                   className="Button Button--link"
                   onclick={() => {
                     this.editing = comment;
-                    this.draft = comment.body();
+                    // A posted comment always has a body.
+                    this.draft = comment.body()!;
                   }}
                 >
                   {t('comment.edit')}
@@ -111,11 +126,11 @@ export default class Comments {
     );
   }
 
-  form({ build, entry, state }) {
+  form({ build, entry, state }: CommentsAttrs) {
     return (
       <form
         className="GarageComments-form"
-        onsubmit={(e) => {
+        onsubmit={(e: SubmitEvent) => {
           e.preventDefault();
           this.post(build, entry, state);
         }}
@@ -129,8 +144,8 @@ export default class Comments {
             value={this.body}
             placeholder={extractText(t(entry ? 'comment.placeholder_entry' : 'comment.placeholder'))}
             aria-label={extractText(t('comment.label'))}
-            oninput={(e) => (this.body = e.target.value)}
-            onkeydown={(e) => {
+            oninput={(e: InputEvent) => (this.body = (e.target as HTMLTextAreaElement).value)}
+            onkeydown={(e: KeyboardEvent) => {
               // Ctrl/Cmd + Enter posts. A block, not `cond && …`: a handler returning false cancels every key.
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -148,12 +163,12 @@ export default class Comments {
     );
   }
 
-  post(build, entry, state) {
+  post(build: GarageBuild, entry: GarageEntry | null | undefined, state: LogState) {
     if (!this.body.trim() || this.saving) return;
     this.saving = true;
 
     app.store
-      .createRecord('garage-comments')
+      .createRecord<GarageComment>('garage-comments')
       .save({
         body: this.body,
         entryId: entry ? Number(entry.id()) : null,
@@ -171,7 +186,7 @@ export default class Comments {
       });
   }
 
-  saveEdit(comment) {
+  saveEdit(comment: GarageComment) {
     this.saving = true;
     comment
       .save({ body: this.draft })
@@ -182,7 +197,7 @@ export default class Comments {
       });
   }
 
-  remove(comment, state) {
+  remove(comment: GarageComment, state: LogState) {
     if (!confirm(extractText(t('comment.delete_confirm')))) return;
     comment.delete().then(() => {
       state.comments = state.comments.filter((c) => c !== comment);

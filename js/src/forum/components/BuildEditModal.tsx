@@ -1,5 +1,5 @@
 import app from 'flarum/forum/app';
-import FormModal from 'flarum/common/components/FormModal';
+import FormModal, { type IFormModalAttrs } from 'flarum/common/components/FormModal';
 import Button from 'flarum/common/components/Button';
 import Select from 'flarum/common/components/Select';
 import Stream from 'flarum/common/utils/Stream';
@@ -7,9 +7,19 @@ import extractText from 'flarum/common/utils/extractText';
 import PhotoManager, { PhotoQueue } from './PhotoManager';
 import TextField from './TextField';
 import useStyles from '../styles';
+import type Mithril from 'mithril';
+import type RequestError from 'flarum/common/utils/RequestError';
+import type { GarageBuild, GarageCategory, GarageField } from '../../common/models';
 import { t, buildUrl, STAGES } from '../util';
 
 const MAX_PHOTOS = 24;
+
+export interface BuildEditModalAttrs extends IFormModalAttrs {
+  build?: GarageBuild | null;
+  category?: GarageCategory | null;
+  /** 'photos' scrolls to the photos. */
+  tab?: string;
+}
 
 /**
  * Add or edit a build: what it is, its spec sheet (the fields of its
@@ -17,15 +27,28 @@ const MAX_PHOTOS = 24;
  * photos go up one by one; it is published at once unless the member keeps it
  * as a draft.
  */
-export default class BuildEditModal extends FormModal {
+export default class BuildEditModal extends FormModal<BuildEditModalAttrs> {
+  build!: GarageBuild | null;
+  categories!: GarageCategory[];
+  categoryId!: Stream<string>;
+  name!: Stream<string>;
+  progress!: Mithril.Children;
+  publish!: Stream<boolean>;
+  queue!: PhotoQueue;
+  specs!: Record<string, unknown>;
+  stage!: Stream<string>;
+  /** [field, value] once the story is changed. */
+  storyEdit!: ['story' | 'storySource', string] | null;
+  tagline!: Stream<string>;
+
   // Windows opened over this form stack on it (see forum/index.js).
   static keepsOthersOnTop = true;
 
-  oninit(vnode) {
+  oninit(vnode: Mithril.Vnode<BuildEditModalAttrs, this>) {
     super.oninit(vnode);
     useStyles();
     const build = (this.build = this.attrs.build || null);
-    this.categories = [...app.store.all('garage-categories')].sort((a, b) => a.position() - b.position());
+    this.categories = app.store.all<GarageCategory>('garage-categories').sort((a, b) => a.position() - b.position());
     const category = build?.category() || this.attrs.category || this.categories[0] || null;
 
     this.categoryId = Stream(category ? category.id() : '');
@@ -39,7 +62,7 @@ export default class BuildEditModal extends FormModal {
     this.queue = new PhotoQueue(MAX_PHOTOS);
 
     if (!this.categories.length) {
-      app.store.find('garage-categories').then((list) => {
+      app.store.find<GarageCategory[]>('garage-categories').then((list) => {
         this.categories = [...list].sort((a, b) => a.position() - b.position());
         if (!this.categoryId() && this.categories[0]) this.categoryId(this.categories[0].id());
         m.redraw();
@@ -47,7 +70,7 @@ export default class BuildEditModal extends FormModal {
     }
   }
 
-  oncreate(vnode) {
+  oncreate(vnode: Mithril.VnodeDOM<BuildEditModalAttrs, this>) {
     super.oncreate(vnode);
     if (this.attrs.tab === 'photos') setTimeout(() => this.element.querySelector('.GarageEdit-photos')?.scrollIntoView({ block: 'start' }), 100);
   }
@@ -65,10 +88,10 @@ export default class BuildEditModal extends FormModal {
   }
 
   content() {
-    const stages = {};
+    const stages: Record<string, string> = {};
     STAGES.forEach((stage) => (stages[stage] = extractText(t(`stage.${stage}`))));
-    const categories = {};
-    this.categories.forEach((c) => (categories[c.id()] = c.name()));
+    const categories: Record<string, string> = {};
+    this.categories.forEach((c) => (categories[c.id()!] = c.name()));
     const fields = this.category()?.fields() || [];
 
     return (
@@ -126,7 +149,7 @@ export default class BuildEditModal extends FormModal {
               text={this.build?.story()}
               source={this.build?.storySource()}
               placeholder={extractText(t('edit.story_placeholder'))}
-              onchange={(kind, value) => (this.storyEdit = [kind === 'source' ? 'storySource' : 'story', value])}
+              onchange={(kind: 'source' | 'text', value: string) => (this.storyEdit = [kind === 'source' ? 'storySource' : 'story', value])}
             />
           </div>
 
@@ -137,7 +160,7 @@ export default class BuildEditModal extends FormModal {
 
           {!this.build ? (
             <label className="checkbox GarageEdit-publish">
-              <input type="checkbox" checked={this.publish()} onchange={(e) => this.publish(e.target.checked)} />
+              <input type="checkbox" checked={this.publish()} onchange={(e: Event) => this.publish((e.target as HTMLInputElement).checked)} />
               {t('edit.publish_now')}
             </label>
           ) : null}
@@ -152,14 +175,14 @@ export default class BuildEditModal extends FormModal {
     );
   }
 
-  specField(field) {
+  specField(field: GarageField) {
     const id = `garage-spec-${field.key}`;
     const value = this.specs[field.key] ?? '';
-    const set = (v) => (this.specs[field.key] = v);
-    let control;
+    const set = (v: string) => (this.specs[field.key] = v);
+    let control: Mithril.Children;
 
     if (field.type === 'select') {
-      const options = { '': '—' };
+      const options: Record<string, string> = { '': '—' };
       (field.options || []).forEach((option) => (options[option] = option));
       control = <Select id={id} options={options} value={String(value)} onchange={set} />;
     } else {
@@ -173,7 +196,7 @@ export default class BuildEditModal extends FormModal {
           maxlength={field.type === 'text' ? 120 : undefined}
           placeholder={field.type === 'link' ? 'https://' : undefined}
           value={value}
-          oninput={(e) => set(e.target.value)}
+          oninput={(e: InputEvent) => set((e.target as HTMLInputElement).value)}
         />
       );
     }
@@ -189,18 +212,18 @@ export default class BuildEditModal extends FormModal {
     );
   }
 
-  endpoint(build) {
+  endpoint(build: GarageBuild): string {
     return `${app.forum.attribute('apiUrl')}/garage-builds/${build.id()}`;
   }
 
-  async onsubmit(e) {
+  async onsubmit(e: SubmitEvent) {
     e.preventDefault();
     this.loading = true;
     this.alertAttrs = null;
 
     const isNew = !this.build;
-    let build = this.build || app.store.createRecord('garage-builds');
-    const data = {
+    let build: GarageBuild = this.build || app.store.createRecord<GarageBuild>('garage-builds');
+    const data: Record<string, unknown> = {
       title: this.name(),
       tagline: this.tagline() || null,
       stage: this.stage(),
@@ -233,7 +256,7 @@ export default class BuildEditModal extends FormModal {
       console.error(error);
       this.loading = false;
       this.progress = null;
-      this.onerror(error);
+      this.onerror(error as RequestError);
     }
   }
 }
