@@ -19,6 +19,7 @@ use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Gdpr\GarageData;
 use ErnestDefoe\Garage\Comment;
 use ErnestDefoe\Garage\Entry;
+use ErnestDefoe\Garage\Extend\Feature;
 use ErnestDefoe\Garage\Http\GaragePageContent;
 use ErnestDefoe\Garage\Listener\ForgetDeletedUser;
 use ErnestDefoe\Garage\Notification\CommentBlueprint;
@@ -123,11 +124,17 @@ return [
     (new Extend\Event())
         ->listen(Deleting::class, ForgetDeletedUser::class),
 
+    // The flags the code branches on (Features), each on only while its extension is.
     (new Extend\Conditional())
+        ->whenExtensionEnabled('fof-upload', fn () => [new Feature('fofUpload')])
+        ->whenExtensionEnabled('ernestdefoe-scribe', fn () => [new Feature('scribe')])
+        ->whenExtensionEnabled('flarum-markdown', fn () => [new Feature('otherEditor')])
+        ->whenExtensionEnabled('fof-rich-text', fn () => [new Feature('otherEditor')])
         ->whenExtensionEnabled('flarum-gdpr', fn () => [
             (new UserData())->addType(GarageData::class),
         ])
         ->whenExtensionEnabled('fof-signature', fn () => [
+            new Feature('fofSignature'),
             (new Extend\ApiResource(UserResource::class))
                 ->fields(Api\SignatureFields::class),
         ]),

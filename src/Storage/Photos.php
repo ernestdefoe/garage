@@ -2,8 +2,8 @@
 
 namespace ErnestDefoe\Garage\Storage;
 
+use ErnestDefoe\Garage\Features;
 use ErnestDefoe\Garage\Settings;
-use Flarum\Extension\ExtensionManager;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\Settings\SettingsRepositoryInterface;
@@ -42,7 +42,7 @@ class Photos
     public function __construct(
         private readonly Factory $filesystems,
         private readonly SettingsRepositoryInterface $settings,
-        private readonly ExtensionManager $extensions,
+        private readonly Features $features,
         private readonly TranslatorInterface $translator,
         private readonly ImageManager $images,
         private readonly PhotoValidator $validator,
@@ -53,7 +53,7 @@ class Photos
     public function viaFof(User $actor): bool
     {
         return (bool) $this->settings->get(Settings::USE_FOF_UPLOAD)
-            && $this->extensions->isEnabled('fof-upload')
+            && $this->features->fofUpload
             && $actor->can('fof-upload.upload');
     }
 
@@ -115,7 +115,8 @@ class Photos
     private function fromFof(string $uuid, User $actor): array
     {
         $file = null;
-        if ($this->viaFof($actor) && class_exists(\FoF\Upload\File::class)) {
+        if ($this->viaFof($actor)) {
+            // @phpstan-ignore class.notFound (fof/upload is optional: viaFof() is true only while it is enabled)
             $file = \FoF\Upload\File::query()->where('uuid', $uuid)->where('actor_id', $actor->id)->first();
         }
 

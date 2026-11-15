@@ -4,7 +4,6 @@ namespace ErnestDefoe\Garage;
 
 use Flarum\Api\Context;
 use Flarum\Api\Schema;
-use Flarum\Extension\ExtensionManager;
 use Flarum\Formatter\Formatter;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
@@ -25,7 +24,7 @@ class RichText
     private const MAX_BYTES = 65535;
 
     public function __construct(
-        private readonly ExtensionManager $extensions,
+        private readonly Features $features,
         private readonly Formatter $formatter,
         private readonly TranslatorInterface $translator,
     ) {
@@ -34,9 +33,7 @@ class RichText
     /** Scribe's editor is on: it stands down while Markdown or FoF Rich Text is enabled. */
     public function editor(): bool
     {
-        return $this->extensions->isEnabled('ernestdefoe-scribe')
-            && ! $this->extensions->isEnabled('flarum-markdown')
-            && ! $this->extensions->isEnabled('fof-rich-text');
+        return $this->features->scribe && ! $this->features->otherEditor;
     }
 
     /**
