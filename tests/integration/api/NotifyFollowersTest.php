@@ -74,7 +74,49 @@ class NotifyFollowersTest extends TestCase
         ]]]));
         $this->assertSame(201, $response->getStatusCode(), (string) $response->getBody());
 
-        $told = $this->database()->table('notifications')->where('type', 'garageNewEntry')->orderBy('user_id')->pluck('user_id')->map(fn ($id) => (int) $id)->all();
-        $this->assertSame([3, 4, 5], $told);
+        $this->assertSame([3, 4, 5], $this->told());
+    }
+
+    #[Test]
+    public function a_build_guests_can_see_costs_one_visibility_query_however_many_follow()
+    {
+        // Guests may see Garage, so every follower can, follower 6 included.
+        $this->database()->table('group_permission')->insertOrIgnore(['group_id' => Group::GUEST_ID, 'permission' => 'ernestdefoe-garage.view']);
+
+        $this->assertSame(1, $this->runJob());
+        $this->assertSame([3, 4, 5, 6], $this->told());
+    }
+
+    #[Test]
+    public function a_build_guests_cannot_see_is_checked_per_follower()
+    {
+        $this->database()->table('group_permission')->whereIn('group_id', [Group::GUEST_ID, Group::MEMBER_ID])->where('permission', 'like', 'ernestdefoe-garage.%')->delete();
+
+        // One as a guest, then one per follower (3, 4, 5, 6).
+        $this->assertSame(5, $this->runJob());
+        $this->assertSame([3, 4, 5], $this->told());
+    }
+
+    /** Runs the job for a new entry and returns how many visibility queries it made. */
+    private function runJob(): int
+    {
+        $this->app();
+        $this->database()->table('garage_entries')->insert(['id' => 1, 'build_id' => 1, 'user_id' => 2, 'title' => 'New wheels', 'happened_on' => Carbon::now()->toDateString(), 'comment_count' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()]);
+
+        $checks = 0;
+        $this->database()->listen(function ($query) use (&$checks) {
+            if (str_contains($query->sql, 'exists') && str_contains($query->sql, 'garage_builds')) {
+                $checks++;
+            }
+        });
+        $this->app()->getContainer()->call([new NotifyFollowers(1), 'handle']);
+
+        return $checks;
+    }
+
+    /** @return list<int> */
+    private function told(): array
+    {
+        return $this->database()->table('notifications')->where('type', 'garageNewEntry')->orderBy('user_id')->pluck('user_id')->map(fn ($id) => (int) $id)->all();
     }
 }

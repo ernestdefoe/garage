@@ -8,6 +8,7 @@ use ErnestDefoe\Garage\Follow;
 use ErnestDefoe\Garage\Notification\NewEntryBlueprint;
 use Flarum\Notification\NotificationSyncer;
 use Flarum\Queue\AbstractJob;
+use Flarum\User\Guest;
 use Flarum\User\User;
 use Illuminate\Contracts\Queue\Queue;
 
@@ -15,14 +16,19 @@ use Illuminate\Contracts\Queue\Queue;
  * A new log entry: tell the build's followers who can still see it. One
  * notification per entry; the owner is never told about their own.
  *
- * Whether a follower can see the build is asked per follower, as core's
- * flarum/subscriptions does for a discussion's followers: whereVisibleTo runs
- * every extension's user scopes (blocks, hidden profiles, groups), which no
- * single query can answer for many people at once. So the work is split: each
- * job checks one page of followers and hands the next page, with the ids that
- * passed, to a job of its own. However many followers a build has, no job runs
- * long, and the last one sends the notification once, to everyone who passed
- * (NotificationSyncer::sync() replaces the recipients, so it is called once).
+ * Visibility is asked ONCE, as a guest: if guests can see the build, every
+ * follower can (members are granted at least what guests are), so a page of
+ * followers costs one query and no per-user check. Only when guests can't see
+ * it is each follower asked, as core's flarum/subscriptions does for a
+ * discussion's followers: whereVisibleTo then runs every extension's user
+ * scopes (groups, blocks, hidden profiles), which no single query answers for
+ * many people at once.
+ *
+ * Either way the work is split: each job takes one page of followers and hands
+ * the next page, with the ids that passed, to a job of its own. However many
+ * followers a build has, no job runs long, and the last one sends the
+ * notification once, to everyone who passed (NotificationSyncer::sync()
+ * replaces the recipients, so it is called once).
  */
 class NotifyFollowers extends AbstractJob
 {
@@ -53,12 +59,7 @@ class NotifyFollowers extends AbstractJob
             ->pluck('user_id')
             ->all();
 
-        $recipients = $this->recipients;
-        foreach (User::query()->with('groups')->whereIn('id', $ids)->get() as $user) {
-            if (Build::query()->whereVisibleTo($user)->whereKey($build->id)->exists()) {
-                $recipients[] = (int) $user->id;
-            }
-        }
+        $recipients = [...$this->recipients, ...$this->visibleTo($build, $ids)];
 
         if (count($ids) === self::$page) {
             $queue->push(new self($this->entryId, (int) end($ids), $recipients));
@@ -72,5 +73,27 @@ class NotifyFollowers extends AbstractJob
                 User::query()->whereIn('id', $recipients)->get()->all(),
             );
         }
+    }
+
+    /**
+     * The followers among $ids who can see the build.
+     *
+     * @param list<int> $ids
+     * @return list<int>
+     */
+    private function visibleTo(Build $build, array $ids): array
+    {
+        if (! $ids || Build::query()->whereVisibleTo(new Guest())->whereKey($build->id)->exists()) {
+            return array_map('intval', $ids);
+        }
+
+        $visible = [];
+        foreach (User::query()->with('groups')->whereIn('id', $ids)->get() as $user) {
+            if (Build::query()->whereVisibleTo($user)->whereKey($build->id)->exists()) {
+                $visible[] = (int) $user->id;
+            }
+        }
+
+        return $visible;
     }
 }
