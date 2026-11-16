@@ -18,7 +18,9 @@ use Illuminate\Contracts\Queue\Queue;
  *
  * Visibility is asked ONCE, as a guest: if guests can see the build, every
  * follower can (members are granted at least what guests are), so a page of
- * followers costs one query and no per-user check. Only when guests can't see
+ * followers costs one query and no per-user check. A member-only narrowing
+ * scope from another extension is not asked on that path, which is accepted:
+ * a follower chose to follow the build, so they have already seen it. Only when guests can't see
  * it is each follower asked, as core's flarum/subscriptions does for a
  * discussion's followers: whereVisibleTo then runs every extension's user
  * scopes (groups, blocks, hidden profiles), which no single query answers for
