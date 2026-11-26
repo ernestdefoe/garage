@@ -83,7 +83,7 @@ export class TeamInviteNotification extends Notification {
   }
 
   href() {
-    return teamHref(this.attrs.notification.content<TeamData>() || {});
+    return teamHref(this.attrs.notification.content<TeamData>() || {}) + '?invite=1';
   }
 
   content() {

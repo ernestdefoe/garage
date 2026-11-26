@@ -855,6 +855,8 @@
 .GarageTeamModal-results {
   position: absolute;
   z-index: 5;
+  // Anchored under the field: without a top, iOS Safari laid it over the field itself.
+  top: 100%;
   left: 0;
   right: 0;
   list-style: none;

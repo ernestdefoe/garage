@@ -76,6 +76,9 @@ export default class TeamModal extends FormModal<TeamModalAttrs> {
             id="garage-team-user"
             className="FormControl"
             autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck={false}
             placeholder={extractText(t('team.member_placeholder'))}
             value={this.picked ? this.picked.username() : this.query()}
             oninput={(e: InputEvent) => this.search((e.target as HTMLInputElement).value)}
@@ -84,7 +87,15 @@ export default class TeamModal extends FormModal<TeamModalAttrs> {
             <ul className="GarageTeamModal-results" role="listbox">
               {this.results.map((user) => (
                 <li role="option">
-                  <button type="button" onclick={() => this.pick(user)}>
+                  {/* On pointerdown: on a phone the tap that closes the keyboard would otherwise be lost. */}
+                  <button
+                    type="button"
+                    onpointerdown={(e: PointerEvent) => {
+                      e.preventDefault();
+                      this.pick(user);
+                    }}
+                    onclick={() => this.pick(user)}
+                  >
                     <Avatar user={user} /> {username(user)}
                   </button>
                 </li>
@@ -100,6 +111,7 @@ export default class TeamModal extends FormModal<TeamModalAttrs> {
             maxlength={MAX_ROLE}
             placeholder={extractText(t('team.role_placeholder'))}
             bidi={this.role}
+            onfocus={() => (this.results = [])}
           />
         </div>
         <Button type="submit" className="Button Button--primary" loading={this.loading} disabled={!this.picked && !this.query().trim()}>
@@ -153,6 +165,7 @@ export default class TeamModal extends FormModal<TeamModalAttrs> {
   search(value: string) {
     this.query(value);
     this.picked = null;
+    this.alertAttrs = null;
     clearTimeout(this.searchTimer);
 
     if (!value.trim() || !app.forum.attribute('canSearchUsers')) {
@@ -174,9 +187,11 @@ export default class TeamModal extends FormModal<TeamModalAttrs> {
     this.results = [];
   }
 
-  /** The picked member, or the one whose username was typed in full. */
+  /** The picked member, one of the results whose name was typed in full, or a lookup by that name. */
   invitee(): Promise<User> {
-    if (this.picked) return Promise.resolve(this.picked);
+    const typed = this.query().trim().toLowerCase();
+    const match = this.results.find((user) => user.username().toLowerCase() === typed);
+    if (this.picked || match) return Promise.resolve((this.picked || match)!);
 
     // A name nobody has gets our own message, not Flarum's "resource not found".
     return app.store.find<User>('users', this.query().trim(), { bySlug: true }, { errorHandler: (error: RequestError) => Promise.reject(error) });
@@ -185,6 +200,11 @@ export default class TeamModal extends FormModal<TeamModalAttrs> {
   onsubmit(e: SubmitEvent) {
     e.preventDefault();
     this.loading = true;
+    // What the fields show, not the last input event: iOS can still be holding the last
+    // typed letter (autocorrect) when Send is tapped.
+    const field = (id: string) => (this.element.querySelector<HTMLInputElement>(`#${id}`)?.value ?? '').trim();
+    this.role(field('garage-team-role'));
+    if (!this.picked) this.query(field('garage-team-user'));
 
     this.invitee()
       .then((user) =>

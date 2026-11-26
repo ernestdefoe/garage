@@ -66,6 +66,12 @@ export default class BuildTeam extends Component<TeamAttrs> {
 
 /** The viewer's invite to the build's team, to accept or decline. */
 export class TeamInvite extends Component<TeamAttrs> {
+  // From the invite notification (?invite=1): on a phone the banner sits below the sidebar.
+  oncreate(vnode: Mithril.VnodeDOM<TeamAttrs, this>) {
+    super.oncreate(vnode);
+    if (m.route.param('invite')) setTimeout(() => vnode.dom?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }), 300);
+  }
+
   view() {
     const build = this.attrs.build;
     const membership = build.viewerMembership();
