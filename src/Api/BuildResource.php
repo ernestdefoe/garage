@@ -9,6 +9,7 @@ use ErnestDefoe\Garage\Counts;
 use ErnestDefoe\Garage\Entry;
 use ErnestDefoe\Garage\Follow;
 use ErnestDefoe\Garage\Like;
+use ErnestDefoe\Garage\Member;
 use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Settings;
 use ErnestDefoe\Garage\Storage\Photos;
@@ -102,9 +103,10 @@ class BuildResource extends AbstractDatabaseResource
                     }
                 }),
             Endpoint\Show::make()
-                ->defaultInclude(['user', 'category'])
+                // The team (accepted members and their users) and the viewer's own invite, in a query each.
+                ->defaultInclude(['user', 'category', 'team', 'team.user', 'viewerMembership'])
                 ->eagerLoad(['category'])
-                ->eagerLoadWhenIncluded(['user' => ['user.groups']]),
+                ->eagerLoadWhenIncluded(['user' => ['user.groups'], 'team.user' => ['team.user.groups']]),
             Endpoint\Create::make()
                 ->authenticated()
                 ->can(Settings::CREATE)
@@ -313,7 +315,7 @@ class BuildResource extends AbstractDatabaseResource
         ];
     }
 
-    /** @return list<Schema\Relationship\ToOne> */
+    /** @return list<Schema\Relationship\ToOne|Schema\Relationship\ToMany> */
     private function relationships(\Closure $owner): array
     {
         return [
@@ -328,6 +330,17 @@ class BuildResource extends AbstractDatabaseResource
             Schema\Relationship\ToOne::make('lastEntry')
                 ->type('garage-entries')
                 ->includable(),
+            // The team is shown on the build's page only: never loaded for a list of builds.
+            Schema\Relationship\ToMany::make('team')
+                ->type('garage-members')
+                ->includable()
+                ->visible(fn (Build $b, Context $context) => ! $context->listing(self::class)),
+            // The viewer's own row (an invite to answer, or their place on the team).
+            Schema\Relationship\ToOne::make('viewerMembership')
+                ->type('garage-members')
+                ->includable()
+                ->visible(fn (Build $b, Context $context) => ! $context->listing(self::class) && ! $context->getActor()->isGuest())
+                ->get(fn (Build $b, Context $context) => Member::query()->where('build_id', $b->id)->where('user_id', $context->getActor()->id)->first()?->setRelation('build', $b)),
         ];
     }
 

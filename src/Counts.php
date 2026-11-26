@@ -62,6 +62,10 @@ class Counts
             Like::query()->where('build_id', $build->id)->delete();
             Follow::query()->where('build_id', $build->id)->delete();
             Notification::query()->whereIn('type', ['garageNewEntry', 'garageComment'])->where('subject_id', $build->id)->delete();
+            // The team's invites and "joined" alerts are about its Member rows.
+            Notification::query()->whereIn('type', ['garageTeamInvite', 'garageTeamJoined'])
+                ->whereIn('subject_id', Member::query()->select('id')->where('build_id', $build->id))->delete();
+            Member::query()->where('build_id', $build->id)->delete();
         });
     }
 }

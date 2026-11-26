@@ -6,6 +6,7 @@ use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Comment;
 use ErnestDefoe\Garage\Entry;
 use ErnestDefoe\Garage\Erasure;
+use ErnestDefoe\Garage\Member;
 use ErnestDefoe\Garage\RichText;
 use ErnestDefoe\Garage\Storage\Photos;
 use Flarum\Gdpr\Data\Type;
@@ -65,6 +66,11 @@ class GarageData extends Type
         $comments = Comment::query()->where('user_id', $this->user->id)->orderBy('id')->get(['build_id', 'entry_id', 'body', 'created_at', 'edited_at']);
         if ($comments->isNotEmpty()) {
             $export[] = ['garage/comments.json' => $this->encodeForExport($comments->toArray())];
+        }
+
+        $teams = Member::query()->with('build:id,title')->where('user_id', $this->user->id)->orderBy('id')->get();
+        if ($teams->isNotEmpty()) {
+            $export[] = ['garage/teams.json' => $this->encodeForExport($teams->map(fn (Member $m) => ['build' => $m->build?->title, ...$m->only(['role', 'status', 'created_at', 'accepted_at'])])->all())];
         }
 
         return $export;

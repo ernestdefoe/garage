@@ -19,11 +19,14 @@ use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Gdpr\GarageData;
 use ErnestDefoe\Garage\Comment;
 use ErnestDefoe\Garage\Entry;
+use ErnestDefoe\Garage\Member;
 use ErnestDefoe\Garage\Extend\Feature;
 use ErnestDefoe\Garage\Http\GaragePageContent;
 use ErnestDefoe\Garage\Listener\ForgetDeletedUser;
 use ErnestDefoe\Garage\Notification\CommentBlueprint;
 use ErnestDefoe\Garage\Notification\NewEntryBlueprint;
+use ErnestDefoe\Garage\Notification\TeamInviteBlueprint;
+use ErnestDefoe\Garage\Notification\TeamJoinedBlueprint;
 use ErnestDefoe\Garage\Search;
 use Flarum\Api\Resource\ForumResource;
 use Flarum\Api\Resource\PostResource;
@@ -66,6 +69,7 @@ return [
     new Extend\ApiResource(Api\BuildResource::class),
     new Extend\ApiResource(Api\EntryResource::class),
     new Extend\ApiResource(Api\CommentResource::class),
+    new Extend\ApiResource(Api\MemberResource::class),
 
     (new Extend\ApiResource(UserResource::class))
         ->fields(Api\UserFields::class),
@@ -96,10 +100,13 @@ return [
         ->addFilter(Search\BuildSearcher::class, Search\Filter\PublishedFilter::class)
         ->addFilter(Search\BuildSearcher::class, Search\Filter\TextFilter::class)
         ->addFilter(Search\BuildSearcher::class, Search\Filter\SpecFilter::class)
+        ->addFilter(Search\BuildSearcher::class, Search\Filter\TeamFilter::class)
         ->addSearcher(Entry::class, Search\EntrySearcher::class)
         ->addFilter(Search\EntrySearcher::class, Search\Filter\EntryBuildFilter::class)
         ->addSearcher(Comment::class, Search\CommentSearcher::class)
-        ->addFilter(Search\CommentSearcher::class, Search\Filter\CommentBuildFilter::class),
+        ->addFilter(Search\CommentSearcher::class, Search\Filter\CommentBuildFilter::class)
+        ->addSearcher(Member::class, Search\MemberSearcher::class)
+        ->addFilter(Search\MemberSearcher::class, Search\Filter\MemberBuildFilter::class),
 
     (new Extend\ModelVisibility(Build::class))
         ->scope(Access\ScopeBuildVisibility::class),
@@ -107,11 +114,14 @@ return [
         ->scope(Access\ScopeChildVisibility::class),
     (new Extend\ModelVisibility(Comment::class))
         ->scope(Access\ScopeChildVisibility::class),
+    (new Extend\ModelVisibility(Member::class))
+        ->scope(Access\ScopeMemberVisibility::class),
 
     (new Extend\Policy())
         ->modelPolicy(Build::class, Access\BuildPolicy::class)
         ->modelPolicy(Entry::class, Access\EntryPolicy::class)
-        ->modelPolicy(Comment::class, Access\CommentPolicy::class),
+        ->modelPolicy(Comment::class, Access\CommentPolicy::class)
+        ->modelPolicy(Member::class, Access\MemberPolicy::class),
 
     (new Extend\Model(User::class))
         ->cast('garage_build_count', 'integer')
@@ -119,7 +129,9 @@ return [
 
     (new Extend\Notification())
         ->type(NewEntryBlueprint::class, ['alert', 'email'])
-        ->type(CommentBlueprint::class, ['alert']),
+        ->type(CommentBlueprint::class, ['alert'])
+        ->type(TeamInviteBlueprint::class, ['alert'])
+        ->type(TeamJoinedBlueprint::class, ['alert']),
 
     (new Extend\Event())
         ->listen(Deleting::class, ForgetDeletedUser::class),

@@ -44,6 +44,7 @@ class Erasure
         Comment::query()->where('user_id', $id)->delete();
         Like::query()->where('user_id', $id)->delete();
         Follow::query()->where('user_id', $id)->delete();
+        Member::query()->where('user_id', $id)->delete();
 
         // What is left, worked out again in one statement per table: each count is a subquery.
         if ($builds = array_values(array_diff($builds, $gone))) {

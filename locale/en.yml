@@ -227,13 +227,20 @@ ernestdefoe-garage:
 
   lib:
     gdpr:
-      export: "Garage: the member's builds with their photos, spec sheets, stories and build logs, and their comments."
-      delete: "Garage: the member's builds (photos and build logs included), comments, likes and follows are deleted."
+      export: "Garage: the member's builds with their photos, spec sheets, stories and build logs, their comments, and the teams they're on."
+      delete: "Garage: the member's builds (photos and build logs included), comments, likes, follows and team places are deleted."
 
   api:
     last_category: The last category can't be deleted while it has builds.
     photo_not_found: That photo couldn't be found. Upload it again.
     text_too_long: That's too long to save. Shorten it and try again.
+    team:
+      already: They're already on this build's team, or invited to it.
+      cannot_see: They can't see this build, so they can't join its team.
+      draft: Publish the build before you invite a team.
+      full: "A team can have up to {count} members, invites included."
+      not_found: That member wasn't found.
+    too_many_invites: You've sent a lot of invites today. Try again tomorrow.
     too_many_builds: "You can have up to {count} builds."
     too_many_comments: You're commenting too fast. Wait a minute and try again.
     too_many_entries: "A build log can have up to {count} updates."

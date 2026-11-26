@@ -6,7 +6,9 @@ use Carbon\Carbon;
 use Flarum\Database\AbstractModel;
 use Flarum\Database\ScopeVisibilityTrait;
 use Flarum\User\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -35,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property User|null $user
  * @property Category|null $category
  * @property Entry|null $lastEntry
+ * @property \Illuminate\Database\Eloquent\Collection<int, Member> $team
  */
 class Build extends AbstractModel
 {
@@ -83,6 +86,44 @@ class Build extends AbstractModel
     public function lastEntry(): BelongsTo
     {
         return $this->belongsTo(Entry::class, 'last_entry_id');
+    }
+
+    /**
+     * The build's team: its accepted members, in the order they joined (the
+     * owner is not a row). Pending invites are Member rows too, never here.
+     *
+     * @return HasMany<Member, $this>
+     */
+    public function team(): HasMany
+    {
+        return $this->hasMany(Member::class)->chaperone('build')->where('garage_members.status', Member::ACCEPTED)->orderBy('garage_members.accepted_at')->orderBy('garage_members.id');
+    }
+
+    /**
+     * Builds a member owns or is on the team of (accepted). Other extensions
+     * (Dossier) list a member's builds with this; pair it with whereVisibleTo.
+     *
+     * @param Builder<Build> $query
+     */
+    public function scopeFeaturing(Builder $query, User|int $user): void
+    {
+        $id = $user instanceof User ? (int) $user->id : $user;
+
+        $query->where(function (Builder $q) use ($id) {
+            $q->where('garage_builds.user_id', $id)
+                ->orWhereIn('garage_builds.id', Member::query()->select('build_id')->where('user_id', $id)->where('status', Member::ACCEPTED));
+        });
+    }
+
+    /**
+     * The member's role on this build: null when they own it or have no role.
+     * Reads the loaded `team` (eager-load it for lists: no query per build).
+     */
+    public function roleOf(User|int $user): ?string
+    {
+        $id = $user instanceof User ? (int) $user->id : $user;
+
+        return $this->team->firstWhere('user_id', $id)?->role;
     }
 
     public function isOwnedBy(User $user): bool
