@@ -6,6 +6,7 @@ import { loadStyles } from '../styles';
 import type { GarageBuild } from '../../common/models';
 import type { BuildEditModalAttrs } from './BuildEditModal';
 import type { EntryModalAttrs } from './EntryModal';
+import type { TeamModalAttrs } from './TeamModal';
 
 /** The forms are a chunk of their own, fetched the first time one opens. */
 export function openBuildEditor(attrs: Pick<BuildEditModalAttrs, 'build' | 'category' | 'tab'>) {
@@ -14,6 +15,10 @@ export function openBuildEditor(attrs: Pick<BuildEditModalAttrs, 'build' | 'cate
 
 export function openEntryEditor(attrs: Pick<EntryModalAttrs, 'build' | 'entry' | 'log'>) {
   app.modal.show(() => Promise.all([import('./EntryModal'), loadStyles()]).then(([module]) => module), attrs);
+}
+
+export function openTeamManager(attrs: Pick<TeamModalAttrs, 'build'>) {
+  app.modal.show(() => Promise.all([import('./TeamModal'), loadStyles()]).then(([module]) => module), attrs);
 }
 
 /** A new discussion with the build's link on a line of its own, so the post shows its card. */

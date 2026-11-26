@@ -52,6 +52,8 @@ app.initializers.add('ernestdefoe-garage', () => {
   extend('flarum/forum/components/NotificationGrid', 'notificationTypes', (items) => {
     items.add('garageNewEntry', { name: 'garageNewEntry', icon: 'fas fa-screwdriver-wrench', label: t('notifications.new_entry_setting') });
     items.add('garageComment', { name: 'garageComment', icon: 'far fa-comment-dots', label: t('notifications.comment_setting') });
+    items.add('garageTeamInvite', { name: 'garageTeamInvite', icon: 'fas fa-user-plus', label: t('notifications.team_invite_setting') });
+    items.add('garageTeamJoined', { name: 'garageTeamJoined', icon: 'fas fa-people-group', label: t('notifications.team_joined_setting') });
   });
 
   // A build linked on a line of its own becomes its card.

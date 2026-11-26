@@ -18,6 +18,7 @@ import Comments from './Comments';
 import { PhotoGrid } from './Lightbox';
 import { formatSpec } from './BuildCard';
 import { openBuildEditor, openEntryEditor, postAbout } from './openers';
+import BuildTeam, { TeamInvite, teamControls } from './BuildTeam';
 import useStyles from '../styles';
 import type { GarageBuild, GarageComment, GarageEntry } from '../../common/models';
 import type { LogState } from '../types';
@@ -168,6 +169,7 @@ export default class BuildPage extends Page<IPageAttrs, LogState> {
 
     items.add('actions', <div className="GarageActions">{this.actionItems().toArray()}</div>, 90);
     items.add('specs', this.specSheet(), 80);
+    items.add('team', <BuildTeam build={build} />, 75);
     items.add('stats', this.stats(), 70);
 
     return items;
@@ -261,7 +263,7 @@ export default class BuildPage extends Page<IPageAttrs, LogState> {
 
   controls() {
     const build = this.build!;
-    const items = new ItemList();
+    const items = new ItemList<Mithril.Children>();
 
     if (build.canEdit()) {
       items.add(
@@ -281,6 +283,8 @@ export default class BuildPage extends Page<IPageAttrs, LogState> {
         );
       }
     }
+
+    teamControls(build, items);
 
     // With FoF Signature: the owner's build shown under their posts.
     if (build.inSignature() !== undefined && 'fof-signature' in (flarum.extensions || {}) && build.published()) {
@@ -350,6 +354,22 @@ export default class BuildPage extends Page<IPageAttrs, LogState> {
     );
   }
 
+  /** An unpublished build, to its owner: publish it from here. */
+  draftBanner() {
+    const build = this.build!;
+    if (build.published() || !build.canEdit()) return null;
+
+    return (
+      <div className="GarageDraft">
+        <Icon name="fas fa-eye-slash" />
+        <p>{t('build.draft_hint')}</p>
+        <Button className="Button Button--primary" onclick={() => build.save({ published: true })}>
+          {t('build.publish')}
+        </Button>
+      </div>
+    );
+  }
+
   stats() {
     const build = this.build!;
     const stat = (icon: string, label: Mithril.Children, value: Mithril.Children) => (
@@ -378,15 +398,8 @@ export default class BuildPage extends Page<IPageAttrs, LogState> {
 
     return (
       <div className="GarageBuildPage-content">
-        {!build.published() && build.canEdit() ? (
-          <div className="GarageDraft">
-            <Icon name="fas fa-eye-slash" />
-            <p>{t('build.draft_hint')}</p>
-            <Button className="Button Button--primary" onclick={() => build.save({ published: true })}>
-              {t('build.publish')}
-            </Button>
-          </div>
-        ) : null}
+        <TeamInvite build={build} />
+        {this.draftBanner()}
 
         {build.story() || build.storyHtml() ? (
           <section className="GarageSection GarageStory">

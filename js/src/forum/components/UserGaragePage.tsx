@@ -15,6 +15,8 @@ import { t, money } from '../util';
 /** Profile → Garage: the member's builds (their drafts too, on their own profile). */
 export default class UserGaragePage extends UserPage {
   builds!: GarageBuild[] | null;
+  /** Builds the member is on the team of (not their own). */
+  teamBuilds!: GarageBuild[];
   /** The member whose builds are loaded. */
   shownFor!: string | undefined;
 
@@ -22,6 +24,7 @@ export default class UserGaragePage extends UserPage {
     super.oninit(vnode);
     useStyles();
     this.builds = null;
+    this.teamBuilds = [];
     this.loadUser(m.route.param('username'));
   }
 
@@ -30,12 +33,15 @@ export default class UserGaragePage extends UserPage {
     if (this.shownFor === user.id()) return;
     this.shownFor = user.id();
 
-    app.store
-      .find<GarageBuild[]>('garage-builds', { filter: { user: user.id() }, sort: '-lastActivityAt', page: { limit: 48, total: 0 } })
-      .then((builds) => {
-        this.builds = builds;
-        m.redraw();
-      });
+    const query = (filter: Record<string, string>) =>
+      app.store.find<GarageBuild[]>('garage-builds', { filter, sort: '-lastActivityAt', page: { limit: 48, total: 0 } });
+
+    // Their own builds and the teams they're on, side by side.
+    Promise.all([query({ user: user.id()! }), query({ team: user.id()! })]).then(([builds, teamBuilds]) => {
+      this.builds = builds;
+      this.teamBuilds = teamBuilds;
+      m.redraw();
+    });
   }
 
   content() {
@@ -90,7 +96,26 @@ export default class UserGaragePage extends UserPage {
             ) : null}
           </div>
         )}
+        {this.teamSection()}
       </div>
+    );
+  }
+
+  /** Builds the member is on the team of. */
+  teamSection() {
+    if (!this.teamBuilds.length) return null;
+
+    return (
+      <section className="GarageUserPage-team">
+        <h2 className="GarageSection-title">
+          {t('profile.team_builds')} <span className="GarageSection-count">{this.teamBuilds.length}</span>
+        </h2>
+        <div className="GarageGrid GarageGrid--profile">
+          {this.teamBuilds.map((build) => (
+            <BuildCard build={build} />
+          ))}
+        </div>
+      </section>
     );
   }
 }

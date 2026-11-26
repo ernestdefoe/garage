@@ -32,7 +32,8 @@ class Counts
     {
         $categoryIds = array_values(array_unique(array_filter($categoryIds)));
 
-        // One statement for all of them, each count a subquery.
+        // One statement for all of them, each count a correlated subquery (selectRaw('count(*)'):
+        // the query builder has no expression for one).
         if ($categoryIds) {
             Category::query()->whereIn('id', $categoryIds)->update([
                 'build_count' => Build::query()->selectRaw('count(*)')->whereColumn('garage_builds.category_id', 'garage_categories.id')->whereNotNull('published_at'),

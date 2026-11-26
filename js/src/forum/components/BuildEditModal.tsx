@@ -261,7 +261,7 @@ export default class BuildEditModal extends FormModal<BuildEditModalAttrs> {
         this.hide();
       }
     } catch (error) {
-      console.error(error);
+      // The window shows the error (onerror); nothing goes to the console.
       this.loading = false;
       this.progress = null;
       this.onerror(error as RequestError);

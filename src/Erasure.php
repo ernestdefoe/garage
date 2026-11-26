@@ -46,7 +46,8 @@ class Erasure
         Follow::query()->where('user_id', $id)->delete();
         Member::query()->where('user_id', $id)->delete();
 
-        // What is left, worked out again in one statement per table: each count is a subquery.
+        // What is left, worked out again in one statement per table: each count is a correlated
+        // subquery (selectRaw('count(*)'): the query builder has no expression for one).
         if ($builds = array_values(array_diff($builds, $gone))) {
             Build::query()->whereIn('id', $builds)->update([
                 'comment_count' => Comment::query()->selectRaw('count(*)')->whereColumn('garage_comments.build_id', 'garage_builds.id'),

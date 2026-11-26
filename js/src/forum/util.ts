@@ -5,7 +5,7 @@ import type { GarageBuild, GarageCardData } from '../common/models';
 export const t = (key: string, params: Record<string, unknown> = {}) => app.translator.trans(`ernestdefoe-garage.forum.${key}`, params);
 
 /** A build's page: from a model or from a card's plain data. */
-export function buildUrl(build: GarageBuild | GarageCardData): string {
+export function buildUrl(build: GarageBuild | Pick<GarageCardData, 'id' | 'slug'>): string {
   const id = build instanceof Model ? build.id() : build.id;
   const slug = build instanceof Model ? build.slug() : build.slug;
   return app.route('garage.build', { id: slug ? `${id}-${slug}` : id });

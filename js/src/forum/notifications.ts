@@ -4,6 +4,16 @@ import type User from 'flarum/common/models/User';
 import type { GarageBuild } from '../common/models';
 import { t, buildUrl } from './util';
 
+interface TeamData {
+  build?: number;
+  slug?: string;
+  title?: string;
+  role?: string | null;
+}
+
+/** The build the team notification is about: its id, slug and title ride in the data. */
+const teamHref = (data: TeamData) => (data.build ? buildUrl({ id: data.build, slug: data.slug || '' }) : app.route('garage'));
+
 interface EntryData {
   entry?: number;
   title?: string;
@@ -63,5 +73,51 @@ export class CommentNotification extends Notification {
 
   excerpt() {
     return this.attrs.notification.content<CommentData>()?.excerpt || null;
+  }
+}
+
+/** The reader was invited to a build's team. */
+export class TeamInviteNotification extends Notification {
+  icon() {
+    return 'fas fa-user-plus';
+  }
+
+  href() {
+    return teamHref(this.attrs.notification.content<TeamData>() || {});
+  }
+
+  content() {
+    const notification = this.attrs.notification;
+    return t('notifications.team_invite', {
+      username: notification.fromUser() && (notification.fromUser() as User).displayName(),
+      build: notification.content<TeamData>()?.title,
+    });
+  }
+
+  excerpt() {
+    return this.attrs.notification.content<TeamData>()?.role || null;
+  }
+}
+
+/** Someone accepted the reader's invite to their build's team. */
+export class TeamJoinedNotification extends Notification {
+  icon() {
+    return 'fas fa-people-group';
+  }
+
+  href() {
+    return teamHref(this.attrs.notification.content<TeamData>() || {});
+  }
+
+  content() {
+    const notification = this.attrs.notification;
+    return t('notifications.team_joined', {
+      username: notification.fromUser() && (notification.fromUser() as User).displayName(),
+      build: notification.content<TeamData>()?.title,
+    });
+  }
+
+  excerpt() {
+    return this.attrs.notification.content<TeamData>()?.role || null;
   }
 }

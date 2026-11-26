@@ -156,6 +156,14 @@ export class GarageBuild extends Model {
   lastEntry(): GarageEntry | null {
     return Model.hasOne<GarageEntry>('lastEntry').call(this) || null;
   }
+  /** Accepted members, on the build's page only (undefined in a list of builds). */
+  team(): GarageMember[] {
+    return (Model.hasMany<GarageMember>('team').call(this) || []).filter((m): m is GarageMember => !!m);
+  }
+  /** The viewer's own invite to the team, or their place on it. */
+  viewerMembership(): GarageMember | null {
+    return Model.hasOne<GarageMember>('viewerMembership').call(this) || null;
+  }
   cover(): GaragePhoto | null {
     return (this.photos() || [])[0] || null;
   }
@@ -218,5 +226,30 @@ export class GarageComment extends Model {
   }
   user(): User | null {
     return Model.hasOne<User>('user').call(this) || null;
+  }
+}
+
+/** A place on a build's team: pending until the invitee accepts. */
+export class GarageMember extends Model {
+  role() {
+    return Model.attribute<string | null>('role').call(this);
+  }
+  status() {
+    return Model.attribute<'pending' | 'accepted'>('status').call(this);
+  }
+  accepted() {
+    return this.status() === 'accepted';
+  }
+  canEdit() {
+    return Model.attribute<boolean>('canEdit').call(this);
+  }
+  canDelete() {
+    return Model.attribute<boolean>('canDelete').call(this);
+  }
+  user(): User | null {
+    return Model.hasOne<User>('user').call(this) || null;
+  }
+  build(): GarageBuild | null {
+    return Model.hasOne<GarageBuild>('build').call(this) || null;
   }
 }

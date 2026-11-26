@@ -1,6 +1,6 @@
 import Extend from 'flarum/common/extenders';
 import commonExtend from '../common/extend';
-import { NewEntryNotification, CommentNotification } from './notifications';
+import { NewEntryNotification, CommentNotification, TeamInviteNotification, TeamJoinedNotification } from './notifications';
 import { loadStyles } from './styles';
 
 // Each page and the shared styles load side by side, so nothing shows unstyled.
@@ -29,5 +29,9 @@ export default [
       page(() => import('./components/UserGaragePage'))
     ),
 
-  new Extend.Notification().add('garageNewEntry', NewEntryNotification).add('garageComment', CommentNotification),
+  new Extend.Notification()
+    .add('garageNewEntry', NewEntryNotification)
+    .add('garageComment', CommentNotification)
+    .add('garageTeamInvite', TeamInviteNotification)
+    .add('garageTeamJoined', TeamJoinedNotification),
 ];

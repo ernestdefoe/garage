@@ -159,6 +159,7 @@ ernestdefoe-garage:
       empty_own: Your garage is empty. Add your first build and show it off!
       likes: "{count, plural, one {like} other {likes}}"
       spent: spent
+      team_builds: Team builds
       updates: "{count, plural, one {update} other {updates}}"
 
     notifications:
@@ -166,6 +167,35 @@ ernestdefoe-garage:
       comment_setting: Someone comments on my build
       new_entry: "{username} posted an update to {build}"
       new_entry_setting: Someone posts an update to a build I follow
+      team_invite: "{username} invited you to the team of {build}"
+      team_invite_setting: Someone invites me to a build's team
+      team_joined: "{username} joined the team of {build}"
+      team_joined_setting: Someone accepts my invite to a build's team
+
+    team:
+      accept: Join the team
+      decline: Decline
+      empty: Nobody's on the team yet. Invite members above.
+      heading: Team
+      invite: Send invite
+      invite_first: Invite a team
+      invite_heading: Invite a member
+      invited: Invited
+      invited_as: "{username} invited you to this build's team as {role}."
+      invited_plain: "{username} invited you to this build's team."
+      leave: Leave team
+      leave_confirm: Leave this build's team? The owner can invite you again.
+      manage: Manage team
+      manage_title: Team
+      member_label: Member
+      member_placeholder: Username
+      no_such_member: "Nobody here is called {username}. Check the spelling."
+      owner: Owner
+      remove: "Remove {username} from the team"
+      role_for: "{username}'s role"
+      role_label: Role
+      role_placeholder: "Like Backend developer or QA"
+      withdraw: "Withdraw {username}'s invite"
 
     signature:
       label: My build

@@ -20,7 +20,7 @@ class ScopeBuildVisibility
         }
 
         if (! $actor->hasPermission(Settings::VIEW)) {
-            $query->whereRaw('1 = 0');
+            $query->whereIn($query->getModel()->getQualifiedKeyName(), []);
 
             return;
         }

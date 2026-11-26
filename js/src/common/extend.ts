@@ -1,5 +1,5 @@
 import Extend from 'flarum/common/extenders';
-import { GarageBuild, GarageCategory, GarageComment, GarageEntry } from './models';
+import { GarageBuild, GarageCategory, GarageComment, GarageEntry, GarageMember } from './models';
 
 /** Garage's models, shared by the forum and the admin. */
 export default [
@@ -7,5 +7,6 @@ export default [
     .add('garage-categories', GarageCategory)
     .add('garage-builds', GarageBuild)
     .add('garage-entries', GarageEntry)
-    .add('garage-comments', GarageComment),
+    .add('garage-comments', GarageComment)
+    .add('garage-members', GarageMember),
 ];
