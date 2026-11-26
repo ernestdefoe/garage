@@ -2,6 +2,7 @@
 
 namespace ErnestDefoe\Garage\Access;
 
+use ErnestDefoe\Garage\Build;
 use ErnestDefoe\Garage\Member;
 use Flarum\User\Access\AbstractPolicy;
 use Flarum\User\User;
@@ -18,9 +19,14 @@ class MemberPolicy extends AbstractPolicy
         return $member->build && $actor->can('update', $member->build) ? $this->allow() : $this->deny();
     }
 
+    /** Only an open invite to a build that is still published and that the invitee can see. */
     public function accept(User $actor, Member $member): ?string
     {
-        return ! $member->isAccepted() && $member->user_id === (int) $actor->id ? $this->allow() : $this->deny();
+        return ! $member->isAccepted()
+            && $member->user_id === (int) $actor->id
+            && $member->build?->published_at
+            && Build::query()->whereVisibleTo($actor)->whereKey($member->build_id)->exists()
+            ? $this->allow() : $this->deny();
     }
 
     /** Any change through the API: a role (the owner) or accepting (the invitee). */

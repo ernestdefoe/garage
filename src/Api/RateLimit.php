@@ -3,7 +3,6 @@
 namespace ErnestDefoe\Garage\Api;
 
 use Illuminate\Contracts\Cache\LockProvider;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Cache\Repository;
 
 /**
@@ -28,13 +27,10 @@ final class RateLimit
             return $this->take($key, $perMinute, $perDay);
         }
 
-        // Waits up to 3 seconds for a request of the same member that holds it; one
-        // still waiting after that is turned away like any request over the limit.
-        try {
-            return (bool) $store->lock("$key.lock", 5)->block(3, fn () => $this->take($key, $perMinute, $perDay));
-        } catch (LockTimeoutException) {
-            return false;
-        }
+        // Never waits: Garage's own forms send one request at a time (photos upload one by
+        // one), so a member's second request arriving while the first holds the lock is a
+        // burst, and is turned away like any request over the limit.
+        return (bool) $store->lock("$key.lock", 5)->get(fn () => $this->take($key, $perMinute, $perDay));
     }
 
     private function take(string $key, int $perMinute, int $perDay): bool

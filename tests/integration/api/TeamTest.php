@@ -283,4 +283,19 @@ class TeamTest extends TestCase
         $this->assertCount(8, $members);
         $this->assertArrayNotHasKey('canEdit', array_values($members)[0]['attributes']);
     }
+
+    #[Test]
+    public function an_invite_to_a_build_that_was_unpublished_cannot_be_accepted()
+    {
+        $id = $this->invite(2, 3)[1]['data']['id'];
+        $this->database()->table('garage_builds')->where('id', 1)->update(['published_at' => null]);
+
+        [$status] = $this->patch(3, $id, ['status' => 'accepted']);
+        $this->assertNotSame(200, $status);
+        $this->assertSame([], $this->notified('garageTeamJoined'));
+
+        // Declining still works.
+        [$status] = $this->call('DELETE', "/api/garage-members/$id", 3);
+        $this->assertSame(204, $status);
+    }
 }
