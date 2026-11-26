@@ -44,9 +44,13 @@ class GarageData extends Type
         $text = resolve(RichText::class);
         $export = [];
 
-        foreach (Build::query()->where('user_id', $this->user->id)->get() as $build) {
+        $builds = Build::query()->where('user_id', $this->user->id)->get();
+        // Every build's log in one query, not one per build.
+        $logs = Entry::query()->whereIn('build_id', $builds->modelKeys())->orderBy('happened_on')->get()->groupBy('build_id');
+
+        foreach ($builds as $build) {
             $folder = "garage/build-$build->id";
-            $entries = Entry::query()->where('build_id', $build->id)->orderBy('happened_on')->get();
+            $entries = $logs->get($build->id, collect());
 
             $export[] = ["$folder/build.json" => $this->encodeForExport([
                 ...$build->only(['title', 'tagline']),

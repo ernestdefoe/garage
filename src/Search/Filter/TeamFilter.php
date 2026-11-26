@@ -26,8 +26,6 @@ class TeamFilter implements FilterInterface
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
         /** @var DatabaseSearchState $state */
-        $members = Member::query()->select('build_id')->where('user_id', $this->asInt($value))->where('status', Member::ACCEPTED);
-
-        $state->getQuery()->{$negate ? 'whereNotIn' : 'whereIn'}('garage_builds.id', $members);
+        $state->getQuery()->{$negate ? 'whereNotIn' : 'whereIn'}('garage_builds.id', Member::teamsOf($this->asInt($value)));
     }
 }

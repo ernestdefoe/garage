@@ -224,12 +224,14 @@ class BuildResource extends AbstractDatabaseResource
                 ->nullable()
                 ->writable($owner)
                 ->rule('max:160'),
-            ...$this->richText->fields('story', 'story', 'story_formatted', $owner, fn (Build $b, Context $context) => ! $context->listing(self::class)),
+            ...$this->richText->fields('story', 'story', 'story_formatted', $owner, fn (Build $b, Context $context) => ! $context->listing()),
             Schema\Str::make('stage')
                 ->writable($owner)
                 ->in(Build::STAGES),
             // {fieldKey: value}; kept to the category's fields in saving().
             Schema\Arr::make('specs')
+                // Not for a build that is another list's subject (a notification): it would load its category.
+                ->visible(fn (Build $b, Context $context) => ! $context->listing() || $context->listing(self::class))
                 // Cleaned again as it is read: a field's type may have changed, or the build moved
                 // to another category, since its values were saved (a text value is no link).
                 ->get(fn (Build $b) => (object) ($b->category ? $b->category->cleanSpecs($b->specs) : ($b->specs ?? [])))
@@ -334,12 +336,12 @@ class BuildResource extends AbstractDatabaseResource
             Schema\Relationship\ToMany::make('team')
                 ->type('garage-members')
                 ->includable()
-                ->visible(fn (Build $b, Context $context) => ! $context->listing(self::class)),
+                ->visible(fn (Build $b, Context $context) => ! $context->listing()),
             // The viewer's own row (an invite to answer, or their place on the team).
             Schema\Relationship\ToOne::make('viewerMembership')
                 ->type('garage-members')
                 ->includable()
-                ->visible(fn (Build $b, Context $context) => ! $context->listing(self::class) && ! $context->getActor()->isGuest())
+                ->visible(fn (Build $b, Context $context) => ! $context->listing() && ! $context->getActor()->isGuest())
                 ->get(fn (Build $b, Context $context) => Member::query()->where('build_id', $b->id)->where('user_id', $context->getActor()->id)->first()?->setRelation('build', $b)),
         ];
     }

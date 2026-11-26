@@ -18,6 +18,8 @@ use Flarum\Notification\NotificationSyncer;
 use Flarum\User\Guest;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Tobyz\JsonApiServer\Context as OriginalContext;
 
 /**
@@ -99,26 +101,53 @@ class MemberResource extends AbstractDatabaseResource
     /** A published build, a team with room, someone not on it yet who can see the build. */
     private function assertInvitable(?Build $build, ?User $invitee): void
     {
-        $error = fn (string $key) => new ValidationException(['user' => $this->translator->trans("ernestdefoe-garage.api.team.$key", ['count' => Member::MAX_TEAM])]);
-
         if (! $build || ! $invitee) {
-            throw $error('not_found');
+            throw $this->invalid('not_found');
         }
         if (! $build->published_at) {
-            throw $error('draft');
+            throw $this->invalid('draft');
         }
         if ($build->user_id === (int) $invitee->id || Member::query()->where('build_id', $build->id)->where('user_id', $invitee->id)->exists()) {
-            throw $error('already');
+            throw $this->invalid('already');
         }
         if (Member::query()->where('build_id', $build->id)->count() >= Member::MAX_TEAM) {
-            throw $error('full');
+            throw $this->invalid('full');
         }
 
         // Asked as a guest first: if guests see the build, so does every member.
         $visible = fn (User $user) => Build::query()->whereVisibleTo($user)->whereKey($build->id)->exists();
         if (! $visible(new Guest()) && ! $visible($invitee)) {
-            throw $error('cannot_see');
+            throw $this->invalid('cannot_see');
         }
+    }
+
+    /**
+     * The checks in creating() ran before the insert, so two invites sent at the
+     * same moment both pass them. The unique key turns away the second invite of
+     * one member, and the team is counted again once the row is in.
+     *
+     * @param Member $model
+     */
+    protected function saveModel(Model $model, OriginalContext $context): void
+    {
+        try {
+            $model->save();
+        } catch (UniqueConstraintViolationException) {
+            throw $this->invalid('already');
+        }
+
+        if (! $model->wasRecentlyCreated || Member::query()->where('build_id', $model->build_id)->count() <= Member::MAX_TEAM) {
+            return;
+        }
+
+        $model->delete();
+
+        throw $this->invalid('full');
+    }
+
+    private function invalid(string $key): ValidationException
+    {
+        return new ValidationException(['user' => $this->translator->trans("ernestdefoe-garage.api.team.$key", ['count' => Member::MAX_TEAM])]);
     }
 
     public function updating(object $model, OriginalContext $context): ?object
@@ -171,6 +200,7 @@ class MemberResource extends AbstractDatabaseResource
     public function fields(): array
     {
         $manages = fn (Member $m, Context $context) => ! $m->exists || $context->getActor()->can('update', $m);
+        $ownList = fn (Member $m, Context $context) => ! $context->listing() || $context->listing(self::class);
 
         return [
             Schema\Str::make('role')
@@ -186,9 +216,13 @@ class MemberResource extends AbstractDatabaseResource
                 ->in([Member::ACCEPTED]),
             Schema\DateTime::make('createdAt')->property('created_at'),
             Schema\DateTime::make('acceptedAt')->property('accepted_at'),
+            // Asked of the build's policy: not for a member row that is a notification's subject,
+            // which has no build loaded (the team window and the build page do).
             Schema\Boolean::make('canEdit')
+                ->visible($ownList)
                 ->get(fn (Member $m, Context $context) => $context->getActor()->can('update', $m)),
             Schema\Boolean::make('canDelete')
+                ->visible($ownList)
                 ->get(fn (Member $m, Context $context) => $context->getActor()->can('delete', $m)),
 
             Schema\Relationship\ToOne::make('user')

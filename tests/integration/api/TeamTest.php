@@ -25,7 +25,7 @@ class TeamTest extends TestCase
 
         $now = Carbon::now();
         $users = [$this->normalUser()];
-        foreach (range(3, 10) as $id) {
+        foreach (range(3, 24) as $id) {
             $users[] = ['id' => $id, 'username' => "member$id", 'email' => "member$id@machine.local", 'is_email_confirmed' => 1];
         }
 
@@ -238,5 +238,49 @@ class TeamTest extends TestCase
         [$status] = $this->call('DELETE', '/api/garage-builds/1', 2);
         $this->assertSame(204, $status);
         $this->assertSame(0, $this->database()->table('garage_members')->count());
+    }
+
+    #[Test]
+    public function a_team_stops_at_twenty_rows()
+    {
+        // An admin: no rate limit in the way.
+        foreach (range(3, 22) as $user) {
+            [$status] = $this->invite(1, $user);
+            $this->assertSame(201, $status);
+        }
+
+        [$status, $body] = $this->invite(1, 23);
+        $this->assertSame(422, $status);
+        $this->assertStringContainsString('team.full', json_encode($body));
+        $this->assertSame(20, $this->database()->table('garage_members')->count());
+    }
+
+    #[Test]
+    public function a_member_can_leave_a_build_that_was_unpublished()
+    {
+        $id = $this->invite(2, 3)[1]['data']['id'];
+        $this->patch(3, $id, ['status' => 'accepted']);
+        $this->database()->table('garage_builds')->where('id', 1)->update(['published_at' => null]);
+
+        [$status] = $this->call('DELETE', "/api/garage-members/$id", 3);
+        $this->assertSame(204, $status);
+    }
+
+    #[Test]
+    public function team_notifications_list_without_a_query_per_notification()
+    {
+        // Eight invites to member 3 from eight builds: the repeated-query detector fails on one query each.
+        $now = Carbon::now();
+        foreach (range(10, 17) as $build) {
+            $this->database()->table('garage_builds')->insert(['id' => $build, 'user_id' => 2, 'category_id' => 1, 'title' => "App $build", 'slug' => "app-$build", 'stage' => 'complete', 'published_at' => $now, 'last_activity_at' => $now, 'entry_count' => 0, 'like_count' => 0, 'comment_count' => 0, 'follower_count' => 0]);
+            $this->invite(2, 3, $build);
+        }
+
+        [$status, $body] = $this->call('GET', '/api/notifications', 3);
+        $this->assertSame(200, $status);
+        $this->assertCount(8, $body['data']);
+        $members = array_filter($body['included'] ?? [], fn ($r) => $r['type'] === 'garage-members');
+        $this->assertCount(8, $members);
+        $this->assertArrayNotHasKey('canEdit', array_values($members)[0]['attributes']);
     }
 }

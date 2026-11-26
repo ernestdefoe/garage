@@ -61,6 +61,16 @@ class Member extends AbstractModel
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * The ids of the builds a member is on the team of (accepted), as a subquery.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public static function teamsOf(int $userId): \Illuminate\Database\Eloquent\Builder
+    {
+        return self::query()->select('build_id')->where('user_id', $userId)->where('status', self::ACCEPTED);
+    }
+
     public function isAccepted(): bool
     {
         return $this->status === self::ACCEPTED;

@@ -270,7 +270,7 @@ ernestdefoe-garage:
       draft: Publish the build before you invite a team.
       full: "A team can have up to {count} members, invites included."
       not_found: That member wasn't found.
-    too_many_invites: You've sent a lot of invites today. Try again tomorrow.
+    too_many_invites: You've sent a lot of invites in a short time. Try again later.
     too_many_builds: "You can have up to {count} builds."
     too_many_comments: You're commenting too fast. Wait a minute and try again.
     too_many_entries: "A build log can have up to {count} updates."

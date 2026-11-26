@@ -111,7 +111,7 @@ class Build extends AbstractModel
 
         $query->where(function (Builder $q) use ($id) {
             $q->where('garage_builds.user_id', $id)
-                ->orWhereIn('garage_builds.id', Member::query()->select('build_id')->where('user_id', $id)->where('status', Member::ACCEPTED));
+                ->orWhereIn('garage_builds.id', Member::teamsOf($id));
         });
     }
 
